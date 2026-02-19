@@ -33,7 +33,12 @@ def boundary_condition(x: jax.Array) -> jax.Array:
     raise NotImplementedError
 
 
-def operatorA(v_t: jax.Array, sigma_t: jax.Array, div_sigma: jax.Array, div_v: jax.Array) -> tuple[jax.Array, jax.Array]:
+def operatorA(
+    v_t: jax.Array,
+    sigma_t: jax.Array,
+    div_sigma: jax.Array,
+    div_v: jax.Array
+) -> tuple[jax.Array, jax.Array]:
     '''
     implement first-order acoustic operator A_0:
 
@@ -58,7 +63,6 @@ def analytical_sigma(t: jax.Array, x: jax.Array) -> jax.Array:
     :param t: time
     :param x: place
     '''
-
     # Dimension should be 1 for analytical solution
     assert DIM == 1
 
@@ -72,7 +76,6 @@ def analytical_v(t: jax.Array, x: jax.Array) -> jax.Array:
     :param t: time
     :param x: place
     '''
-
     # Dimension should be 1 for analytical solution
     assert DIM == 1
 
