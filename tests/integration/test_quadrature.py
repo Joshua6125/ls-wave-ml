@@ -1,5 +1,6 @@
 import jax.numpy as jnp
 import pytest
+from dataclasses import replace
 
 
 @pytest.mark.quadrature
@@ -104,3 +105,162 @@ def test_quadrature_product_sine_2d(config_quadrature_2d, test_functions_2d):
     expected = product_sine_func['integral']
 
     assert jnp.allclose(result, expected, atol=product_sine_func['tolerance'])
+
+
+@pytest.mark.quadrature
+def test_quadrature_boundary_dirichlet_1d(config_quadrature_1d):
+    from src.integration import QuadratureIntegration
+
+    integrator = QuadratureIntegration(config_quadrature_1d)
+
+    # Boundary function always returns 1
+    boundary_func = lambda pts, normals: jnp.ones(pts.shape[0])
+
+    result = integrator.integrate_boundary(boundary_func)
+    # 1D cube has 2 points at x=0 and x=1, each with "length" 1
+    assert jnp.allclose(result, 2.0, atol=1e-10)
+
+
+@pytest.mark.quadrature
+def test_quadrature_invalid_dim(config_quadrature_1d):
+    from src.integration import QuadratureIntegration
+
+    bad_config = replace(config_quadrature_1d, dim=-1)
+    with pytest.raises(AssertionError, match="dim must be positive"):
+        QuadratureIntegration(bad_config)
+
+
+@pytest.mark.quadrature
+def test_quadrature_invalid_bounds(config_quadrature_1d):
+    from src.integration import QuadratureIntegration
+
+    bad_config = replace(config_quadrature_1d, x_min=1.0, x_max=0.0)
+    with pytest.raises(AssertionError, match="x_min must be < x_max"):
+        QuadratureIntegration(bad_config)
+
+
+@pytest.mark.quadrature
+def test_quadrature_invalid_degree(config_quadrature_1d):
+    from src.integration import QuadratureIntegration
+
+    bad_config = replace(config_quadrature_1d, gauss_legendre_degree=0)
+    with pytest.raises(AssertionError, match="degree must be strictly positive"):
+        QuadratureIntegration(bad_config)
+
+
+@pytest.mark.quadrature
+def test_quadrature_integrate_combined_1d(config_quadrature_1d, test_functions_1d):
+    """Test that interior + boundary method combines correctly."""
+    from src.integration import QuadratureIntegration
+
+    integrator = QuadratureIntegration(config_quadrature_1d)
+    const_func = test_functions_1d['constant']
+
+    # Compute using combined method
+    interior_func = const_func['func']
+    boundary_func = lambda pts, normals: jnp.ones(pts.shape[0])
+
+    total_loss, interior_loss, boundary_loss = integrator.integrate(
+        interior_func, boundary_func
+    )
+
+    # Verify: total = interior + boundary
+    assert jnp.allclose(total_loss, interior_loss + boundary_loss, atol=1e-14)
+
+    # Verify interior matches direct call
+    assert jnp.allclose(interior_loss, const_func['integral'], atol=const_func['tolerance'])
+
+    # Verify boundary is 2 (two endpoints at x=0 and x=1)
+    assert jnp.allclose(boundary_loss, 2.0, atol=1e-10)
+
+
+@pytest.mark.quadrature
+@pytest.mark.slow
+def test_quadrature_constant_3d(config_quadrature_3d):
+    """3D integration test: integral of 1 over [0,1]^3 should be 1."""
+    from src.integration import QuadratureIntegration
+
+    integrator = QuadratureIntegration(config_quadrature_3d)
+
+    result = integrator.integrate_interior(lambda x: jnp.ones(x.shape[0]))
+    expected = 1.0
+
+    assert jnp.allclose(result, expected, atol=1e-6)
+
+
+@pytest.mark.quadrature
+@pytest.mark.slow
+def test_quadrature_separable_3d(config_quadrature_3d):
+    """3D integration test: integral of x*y*z over [0,1]^3 should be 1/8."""
+    from src.integration import QuadratureIntegration
+
+    integrator = QuadratureIntegration(config_quadrature_3d)
+
+    def separable_func(x):
+        return x[:, 0] * x[:, 1] * x[:, 2]
+
+    result = integrator.integrate_interior(separable_func)
+    expected = 1.0 / 8.0
+
+    assert jnp.allclose(result, expected, atol=1e-6)
+
+
+@pytest.mark.quadrature
+def test_quadrature_custom_bounds_negative(config_quadrature_1d):
+    """Test integration over [-1, 1] domain."""
+    from src.integration import QuadratureIntegration
+
+    config = replace(config_quadrature_1d, x_min=-1.0, x_max=1.0)
+
+    integrator = QuadratureIntegration(config)
+    result = integrator.integrate_interior(lambda x: jnp.ones(x.shape[0]))
+    expected = 2.0
+
+    assert jnp.allclose(result, expected, atol=1e-10)
+
+
+@pytest.mark.quadrature
+def test_quadrature_custom_bounds_scaled(config_quadrature_1d):
+    """Test integration over [0, 2] domain with scaled interval."""
+    from src.integration import QuadratureIntegration
+
+    config = replace(config_quadrature_1d, x_min=0.0, x_max=2.0)
+
+    integrator = QuadratureIntegration(config)
+    result = integrator.integrate_interior(lambda x: x[:, 0])
+    expected = 2.0
+
+    assert jnp.allclose(result, expected, atol=1e-10)
+
+
+@pytest.mark.quadrature
+def test_quadrature_boundary_2d(config_quadrature_2d):
+    """Test boundary integration over [0,1]^2."""
+    from src.integration import QuadratureIntegration
+
+    integrator = QuadratureIntegration(config_quadrature_2d)
+
+    # Boundary function always returns 1
+    boundary_func = lambda pts, normals: jnp.ones(pts.shape[0])
+
+    result = integrator.integrate_boundary(boundary_func)
+
+    # 2D cube has 4 boundaries: 4 edges each with "length" 1
+    # Total boundary measure: 4
+    assert jnp.allclose(result, 4.0, atol=1e-10)
+
+
+@pytest.mark.quadrature
+def test_quadrature_boundary_normals_2d(config_quadrature_2d):
+    """Test that boundary normals are computed correctly for 2D."""
+    from src.integration import QuadratureIntegration
+
+    integrator = QuadratureIntegration(config_quadrature_2d)
+
+    # Function returns x-component of outward normal
+    boundary_func = lambda pts, normals: normals[:, 0]
+
+    result = integrator.integrate_boundary(boundary_func)
+
+    # Total should be 0 due to cancellation (up to numerical precision)
+    assert jnp.allclose(result, 0.0, atol=1e-7)

@@ -19,7 +19,7 @@ class QuadratureIntegration(NDCubeIntegration):
 
     def __init__(self, config: Config):
         assert config.dim > 0, "dim must be positive"
-        assert config.gauss_legendre_degree > 0, "degree must be positive"
+        assert config.gauss_legendre_degree > 0, "degree must be strictly positive"
         assert config.x_min < config.x_max, "x_min must be < x_max"
 
         self.degree = config.gauss_legendre_degree

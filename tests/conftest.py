@@ -13,7 +13,6 @@ from src.config import Config
 
 # ------ Config Fixtures for Quadrature ------
 
-
 @pytest.fixture
 def config_quadrature_1d():
     """1D Gauss-Legendre quadrature configuration."""
@@ -54,7 +53,6 @@ def config_quadrature_3d():
 
 
 # ------ Config Fixtures for Monte Carlo ------
-
 
 @pytest.fixture
 def config_monte_carlo_1d():
@@ -100,7 +98,6 @@ def config_monte_carlo_3d():
 
 # ------ Custom Config Fixtures ------
 
-
 @pytest.fixture
 def config_quadrature_custom(request):
     """Create custom quadrature config via pytest parametrize."""
@@ -131,7 +128,6 @@ def config_monte_carlo_custom(request):
 
 
 # ------ Test Function Fixtures (Known Integrals) ------
-
 
 @pytest.fixture
 def test_functions_1d():
@@ -196,7 +192,6 @@ def test_functions_2d():
 
 
 # ------ Pytest Configuration ------
-
 
 def pytest_configure(config):
     """Configure pytest with custom markers."""
