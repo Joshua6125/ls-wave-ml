@@ -17,9 +17,9 @@ class MonteCarloIntegration(NDCubeIntegration):
     '''
 
     def __init__(self, config: Config):
-        assert config.dim > 0, "dim must be positive"
-        assert config.monte_carlo_interior_samples > 0, "interior_samples must be positive"
-        assert config.monte_carlo_boundary_samples > 0, "boundary_samples must be positive"
+        assert config.dim > 0, "dim must be strictly positive"
+        assert config.monte_carlo_interior_samples > 0, "interior_samples must be strictly positive"
+        assert config.monte_carlo_boundary_samples > 0, "boundary_samples must be strictly positive"
         assert config.x_min < config.x_max, "x_min must be < x_max"
 
         self.dim = config.dim

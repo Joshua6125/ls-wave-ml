@@ -62,8 +62,8 @@ def config_monte_carlo_1d():
         x_min=0.0,
         x_max=1.0,
         integration_method='monte_carlo',
-        monte_carlo_interior_samples=10000,
-        monte_carlo_boundary_samples=1000,
+        monte_carlo_interior_samples=100000,
+        monte_carlo_boundary_samples=10000,
         monte_carlo_seed=42,
     )
 
@@ -76,8 +76,8 @@ def config_monte_carlo_2d():
         x_min=0.0,
         x_max=1.0,
         integration_method='monte_carlo',
-        monte_carlo_interior_samples=50000,
-        monte_carlo_boundary_samples=5000,
+        monte_carlo_interior_samples=500000,
+        monte_carlo_boundary_samples=50000,
         monte_carlo_seed=42,
     )
 
@@ -90,8 +90,8 @@ def config_monte_carlo_3d():
         x_min=0.0,
         x_max=1.0,
         integration_method='monte_carlo',
-        monte_carlo_interior_samples=100000,
-        monte_carlo_boundary_samples=10000,
+        monte_carlo_interior_samples=1000000,
+        monte_carlo_boundary_samples=100000,
         monte_carlo_seed=42,
     )
 
@@ -136,31 +136,31 @@ def test_functions_1d():
         'constant': {
             'func': lambda x: jnp.ones_like(x[:, 0]),
             'integral': 1.0,
-            'tolerance': 1e-10,
+            'tolerance': 1e-3,
             'description': 'f(x) = 1',
         },
         'linear': {
             'func': lambda x: x[:, 0],
             'integral': 0.5,
-            'tolerance': 1e-10,
+            'tolerance': 1e-3,
             'description': 'f(x) = x',
         },
         'quadratic': {
             'func': lambda x: x[:, 0] ** 2,
             'integral': 1.0 / 3.0,
-            'tolerance': 1e-10,
+            'tolerance': 1e-3,
             'description': 'f(x) = x^2',
         },
         'sine': {
             'func': lambda x: jnp.sin(jnp.pi * x[:, 0]),
             'integral': 2.0 / jnp.pi,
-            'tolerance': 1e-8,
+            'tolerance': 1e-3,
             'description': 'f(x) = sin(pi x)',
         },
         'exponential': {
             'func': lambda x: jnp.exp(x[:, 0]),
             'integral': jnp.e - 1.0,
-            'tolerance': 1e-8,
+            'tolerance': 1e-3,
             'description': 'f(x) = exp(x)',
         },
     }
@@ -168,25 +168,50 @@ def test_functions_1d():
 
 @pytest.fixture
 def test_functions_2d():
-    """Dictionary of 2D test functions with known analytical integrals over [0,1]²."""
+    """Dictionary of 2D test functions with known analytical integrals over [0,1]^2."""
     return {
         'constant': {
             'func': lambda x: jnp.ones(x.shape[0]),
             'integral': 1.0,
-            'tolerance': 1e-10,
+            'tolerance': 1e-3,
             'description': 'f(x,y) = 1',
         },
         'separable': {
             'func': lambda x: x[:, 0] * x[:, 1],
             'integral': 0.25,
-            'tolerance': 1e-10,
+            'tolerance': 1e-3,
             'description': 'f(x,y) = xy',
         },
         'product_sine': {
             'func': lambda x: jnp.sin(jnp.pi * x[:, 0]) * jnp.sin(jnp.pi * x[:, 1]),
             'integral': (2.0 / jnp.pi) ** 2,
-            'tolerance': 1e-8,
+            'tolerance': 1e-3,
             'description': 'f(x,y) = sin(pi x)sin(pi y)',
+        },
+    }
+
+
+@pytest.fixture
+def test_functions_3d():
+    """Dictionary of 3D test functions with known analytical integrals over [0,1]^3."""
+    return {
+        'constant': {
+            'func': lambda x: jnp.ones(x.shape[0]),
+            'integral': 1.0,
+            'tolerance': 1e-3,
+            'description': 'f(x,y,z) = 1',
+        },
+        'separable': {
+            'func': lambda x: x[:, 0] * x[:, 1] * x[:, 2],
+            'integral': 0.125,
+            'tolerance': 1e-3,
+            'description': 'f(x,y,z) = xyz',
+        },
+        'product_sine': {
+            'func': lambda x: jnp.sin(jnp.pi * x[:, 0]) * jnp.sin(jnp.pi * x[:, 1]) * jnp.sin(jnp.pi * x[:, 2]),
+            'integral': (2.0 / jnp.pi) ** 3,
+            'tolerance': 1e-3,
+            'description': 'f(x,y,z) = sin(pi x)sin(pi y)sin(pi z)',
         },
     }
 

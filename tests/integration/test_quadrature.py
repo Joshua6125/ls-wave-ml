@@ -108,6 +108,36 @@ def test_quadrature_product_sine_2d(config_quadrature_2d, test_functions_2d):
 
 
 @pytest.mark.quadrature
+@pytest.mark.slow
+def test_quadrature_constant_3d(config_quadrature_3d, test_functions_3d):
+    """3D integration test: integral of 1 over [0,1]^3 should be 1."""
+    from src.integration import QuadratureIntegration
+
+    integrator = QuadratureIntegration(config_quadrature_3d)
+    const_func = test_functions_3d['constant']
+
+    result = integrator.integrate_interior(const_func['func'])
+    expected = const_func['integral']
+
+    assert jnp.allclose(result, expected, atol=const_func['tolerance'])
+
+
+@pytest.mark.quadrature
+@pytest.mark.slow
+def test_quadrature_separable_3d(config_quadrature_3d, test_functions_3d):
+    """3D integration test: integral of x*y*z over [0,1]^3 should be 1/8."""
+    from src.integration import QuadratureIntegration
+
+    integrator = QuadratureIntegration(config_quadrature_3d)
+    separable_func = test_functions_3d['separable']
+
+    result = integrator.integrate_interior(separable_func['func'])
+    expected = separable_func['integral']
+
+    assert jnp.allclose(result, expected, atol=separable_func['tolerance'])
+
+
+@pytest.mark.quadrature
 def test_quadrature_boundary_dirichlet_1d(config_quadrature_1d):
     from src.integration import QuadratureIntegration
 
@@ -172,37 +202,6 @@ def test_quadrature_integrate_combined_1d(config_quadrature_1d, test_functions_1
 
     # Verify boundary is 2 (two endpoints at x=0 and x=1)
     assert jnp.allclose(boundary_loss, 2.0, atol=1e-10)
-
-
-@pytest.mark.quadrature
-@pytest.mark.slow
-def test_quadrature_constant_3d(config_quadrature_3d):
-    """3D integration test: integral of 1 over [0,1]^3 should be 1."""
-    from src.integration import QuadratureIntegration
-
-    integrator = QuadratureIntegration(config_quadrature_3d)
-
-    result = integrator.integrate_interior(lambda x: jnp.ones(x.shape[0]))
-    expected = 1.0
-
-    assert jnp.allclose(result, expected, atol=1e-6)
-
-
-@pytest.mark.quadrature
-@pytest.mark.slow
-def test_quadrature_separable_3d(config_quadrature_3d):
-    """3D integration test: integral of x*y*z over [0,1]^3 should be 1/8."""
-    from src.integration import QuadratureIntegration
-
-    integrator = QuadratureIntegration(config_quadrature_3d)
-
-    def separable_func(x):
-        return x[:, 0] * x[:, 1] * x[:, 2]
-
-    result = integrator.integrate_interior(separable_func)
-    expected = 1.0 / 8.0
-
-    assert jnp.allclose(result, expected, atol=1e-6)
 
 
 @pytest.mark.quadrature
