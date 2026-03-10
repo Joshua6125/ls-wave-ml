@@ -11,7 +11,10 @@ class NDCubeIntegration(ABC):
         pass
 
     @abstractmethod
-    def integrate_boundary(self, func: Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray]) -> jnp.ndarray:
+    def integrate_boundary(
+            self,
+            func: Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray]
+        ) -> jnp.ndarray:
         """Integrate a function over the boundary (receives both points and normal vectors)."""
         pass
 

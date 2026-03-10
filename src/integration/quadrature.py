@@ -68,9 +68,9 @@ class QuadratureIntegration(NDCubeIntegration):
         return points, weights
 
     def integrate_interior(
-        self,
-        func: Callable[[jnp.ndarray], jnp.ndarray]
-    ) -> jnp.ndarray:
+            self,
+            func: Callable[[jnp.ndarray], jnp.ndarray]
+        ) -> jnp.ndarray:
         """Integrate over interior using quadrature rule."""
         # Evaluate function at quadrature points
         func_values = func(self.points_interior)
@@ -107,10 +107,7 @@ class QuadratureIntegration(NDCubeIntegration):
         if self.dim == 1:
             points = jnp.array([[self.x_min], [self.x_max]])
 
-            normals = jnp.array([
-                [-1.0],
-                [ 1.0],
-            ])
+            normals = jnp.array([[-1.0], [ 1.0]])
 
             weights = jnp.ones(2)
 
@@ -173,9 +170,9 @@ class QuadratureIntegration(NDCubeIntegration):
         }
 
     def integrate_boundary(
-        self,
-        func: Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray]
-    ) -> jnp.ndarray:
+            self,
+            func: Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray]
+        ) -> jnp.ndarray:
         """Integrate function over the cube boundary."""
         func_values = func(
             self.boundary_faces["points"],

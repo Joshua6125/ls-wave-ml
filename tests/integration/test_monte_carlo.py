@@ -201,7 +201,7 @@ def test_monte_carlo_integrate_combined_1d(config_monte_carlo_1d, test_functions
         interior_func, boundary_func
     )
 
-    # Verify: total = interior + boundary
+    # Verify total = interior + boundary
     assert jnp.allclose(total_loss, interior_loss + boundary_loss, atol=1e-14)
 
     # Verify interior matches direct call

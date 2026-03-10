@@ -80,8 +80,8 @@ class MonteCarloIntegration(NDCubeIntegration):
         }
 
     def integrate_interior(
-        self, func: Callable[[jnp.ndarray], jnp.ndarray]
-    ) -> jnp.ndarray:
+            self, func: Callable[[jnp.ndarray], jnp.ndarray]
+        ) -> jnp.ndarray:
         """Integrate over interior using Monte Carlo sampling."""
         # Evaluate function at random samples
         func_values = func(self.points_interior)
@@ -90,8 +90,8 @@ class MonteCarloIntegration(NDCubeIntegration):
         return integral
 
     def integrate_boundary(
-        self, func: Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray]
-    ) -> jnp.ndarray:
+            self, func: Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray]
+        ) -> jnp.ndarray:
         """Integrate over boundary using Monte Carlo sampling."""
         func_values = func(
             self.boundary_data["points"],
