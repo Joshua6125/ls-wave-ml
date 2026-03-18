@@ -1,6 +1,27 @@
 from abc import ABC, abstractmethod
-from typing import Callable
+from dataclasses import dataclass
+from typing import Callable, Literal
 import jax.numpy as jnp
+
+@dataclass(frozen=True)
+class PINNLossConfig:
+    kind: Literal["pinn"] = "pinn"
+    c: float | Callable[[jnp.ndarray], jnp.ndarray] = 1.0
+    f: Callable[[jnp.ndarray], jnp.ndarray] | None = None
+    u0: Callable[[jnp.ndarray], jnp.ndarray] | None = None
+    ut0: Callable[[jnp.ndarray], jnp.ndarray] | None = None
+    ic_weight: float = 1.0
+    bc_weight: float = 1.0
+
+
+@dataclass(frozen=True)
+class LSLossConfig:
+    kind: Literal["ls"] = "ls"
+    f: Callable[[jnp.ndarray], jnp.ndarray] | None = None
+    g: Callable[[jnp.ndarray], jnp.ndarray] | None = None
+    v0: Callable[[jnp.ndarray], jnp.ndarray] | None = None
+    sigma0: Callable[[jnp.ndarray], jnp.ndarray] | None = None
+
 
 class LossBase(ABC):
     """Base class for loss functions."""

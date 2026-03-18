@@ -1,7 +1,6 @@
-from .loss_base import LossBase
+from .loss_base import LossBase, LSLossConfig, PINNLossConfig
 from .loss_PINN import LossPINN
 from .loss_LS import LossLS
-from ..config import LSLossConfig, PINNLossConfig
 
 
 def get_loss_function(
