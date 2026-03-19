@@ -22,7 +22,7 @@ def get_loss_function(
         Loss function instance (LossPINN or LossLS).
     """
 
-    if loss_cfg is PINNLossConfig:
+    if isinstance(loss_cfg, PINNLossConfig):
         if u_model is None:
             raise ValueError("Must provide model in PINN loss function declaration.")
 
@@ -35,7 +35,7 @@ def get_loss_function(
             ic_weight=loss_cfg.ic_weight,
             bc_weight=loss_cfg.bc_weight,
         )
-    elif loss_cfg is LSLossConfig:
+    elif isinstance(loss_cfg, LSLossConfig):
         if v_model is None or sigma_model is None:
             raise ValueError("Must provide models in LS loss function declaration.")
 
@@ -50,4 +50,11 @@ def get_loss_function(
     else:
         raise ValueError("Unknown loss function config.")
 
-__all__ = ["LossBase", "LossPINN", "LossLS"]
+__all__ = [
+    "LossBase",
+    "LSLossConfig",
+    "PINNLossConfig",
+    "LossPINN",
+    "LossLS",
+    "get_loss_function",
+]
