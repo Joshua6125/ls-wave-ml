@@ -79,10 +79,8 @@ class Trainer:
             integration_key: jax.Array,
         ) -> tuple[Any, optax.OptState, jnp.ndarray, jnp.ndarray, jnp.ndarray, jax.Array]:
         """Core train step that can be JIT-compiled."""
-        value, grads = jax.value_and_grad(
-            lambda p: self._loss_with_aux(p, integration_key),
-            has_aux=True,
-        )(params)
+        fun = lambda p: self._loss_with_aux(p, integration_key)
+        value, grads = jax.value_and_grad(fun, has_aux=True)(params)
         total_loss, (interior_loss, boundary_loss, next_integration_key) = value
 
         updates, next_opt_state = self.optimizer.update(grads, opt_state, params)
@@ -144,9 +142,10 @@ class Trainer:
             state = self.init_state(sample_input)
 
         history: list[TrainStepMetrics] = []
-        for _ in range(self.train_cfg.epochs):
+        for epoch in range(self.train_cfg.epochs):
             state, metrics = self.train_step(state)
-            history.append(metrics)
+            if epoch % self.train_cfg.log_every == 0:
+                history.append(metrics)
 
             if callback is not None:
                 callback(metrics)
