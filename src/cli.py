@@ -2,10 +2,9 @@ from typing import Callable
 
 import jax.numpy as jnp
 
-from .config import IntegrationConfig
-from .loss_functions import LSLossConfig, PINNLossConfig
-from .integration import get_integrator
-from .models import AnyModelConfig, build_model_bundle
+from .loss_functions import AnyLossConfig
+from .integration import IntegrationConfig, get_integrator
+from .models import AnyModelConfig, build_model
 from .train.methods import get_training_method
 from .train import (
     TrainConfig,
@@ -18,20 +17,19 @@ from .train import (
 
 def run_training(
         integration_cfg: IntegrationConfig,
-        loss_cfg: LSLossConfig | PINNLossConfig,
+        loss_cfg: AnyLossConfig,
         train_cfg: TrainConfig,
         model_cfg: AnyModelConfig,
         sample_input: jnp.ndarray | None = None,
         state: TrainState | None = None,
         callback: Callable[[TrainStepMetrics], None] | None = None,
     ) -> tuple[TrainState, list[TrainStepMetrics]]:
-    """Build dependencies and execute training.
-
+    """Execute training
 
     """
     integrator = get_integrator(integration_cfg)
-    model_bundle = build_model_bundle(model_cfg)
-    method = get_training_method(loss_cfg=loss_cfg, model_bundle=model_bundle)
+    model = build_model(model_cfg)
+    method = get_training_method(loss_cfg=loss_cfg, model_cfg=model_cfg, model=model)
     optimizer = get_optimizer(train_cfg)
 
     trainer = Trainer(

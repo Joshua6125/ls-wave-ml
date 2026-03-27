@@ -12,11 +12,17 @@ class NeuralNetModelConfig:
     hidden_dim: int = 64
     num_layers: int = 4
     output_dim: int = 1
+    output_heads: dict[str, int] | None = None
 
     def validate(self) -> None:
         assert self.hidden_dim > 0, "hidden_dim must be strictly positive"
         assert self.num_layers > 0, "num_layers must be strictly positive"
         assert self.output_dim > 0, "output_dim must be strictly positive"
+        if self.output_heads is not None:
+            assert len(self.output_heads) > 0, "output_heads must be non-empty when provided"
+            for name, dim in self.output_heads.items():
+                assert name, "output head names must be non-empty"
+                assert dim > 0, "each output head dimension must be strictly positive"
 
 
 @dataclass(frozen=True)
@@ -29,34 +35,27 @@ class PINNModelConfig:
 
 @dataclass(frozen=True)
 class LSModelConfig:
-    """Model specification for LS training."""
+    """Model specification for LS training with one shared multi-head model."""
 
     kind: Literal["ls"] = "ls"
-    v_model: NeuralNetModelConfig = field(
-        default_factory=lambda: NeuralNetModelConfig(output_dim=1)
+    ls_model: NeuralNetModelConfig = field(
+        default_factory=lambda: NeuralNetModelConfig(
+            output_heads={"v": 1, "sigma": 1}
+        )
     )
-    sigma_model: NeuralNetModelConfig = field(
-        default_factory=lambda: NeuralNetModelConfig(output_dim=2)
-    )
 
-
-@dataclass(frozen=True)
-class PINNModelBundle:
-    """Built model objects required by PINN training."""
-
-    u_model: NeuralNet
-
-
-@dataclass(frozen=True)
-class LSModelBundle:
-    """Built model objects required by LS training."""
-
-    v_model: NeuralNet
-    sigma_model: NeuralNet
+    def validate(self) -> None:
+        self.ls_model.validate()
+        if self.ls_model.output_heads is None:
+            raise ValueError("LS model config requires named output heads: 'v' and 'sigma'.")
+        if "v" not in self.ls_model.output_heads or "sigma" not in self.ls_model.output_heads:
+            raise ValueError("LS model config output_heads must include 'v' and 'sigma'.")
+        if self.ls_model.output_heads["v"] != 1:
+            raise ValueError("LS model config requires 'v' head to have output dimension 1.")
 
 
 AnyModelConfig: TypeAlias = PINNModelConfig | LSModelConfig
-AnyModelBundle: TypeAlias = PINNModelBundle | LSModelBundle
+AnyBuiltModel: TypeAlias = NeuralNet
 
 
 def _build_neuralnet(cfg: NeuralNetModelConfig) -> NeuralNet:
@@ -65,18 +64,17 @@ def _build_neuralnet(cfg: NeuralNetModelConfig) -> NeuralNet:
         hidden_dim=cfg.hidden_dim,
         num_layers=cfg.num_layers,
         output_dim=cfg.output_dim,
+        output_heads=cfg.output_heads,
     )
 
 
-def build_model_bundle(model_cfg: AnyModelConfig) -> AnyModelBundle:
-    """Build internal model bundle from declarative model config."""
+def build_model(model_cfg: AnyModelConfig) -> AnyBuiltModel:
+    """Build model from declarative model config."""
     if isinstance(model_cfg, PINNModelConfig):
-        return PINNModelBundle(u_model=_build_neuralnet(model_cfg.u_model))
+        return _build_neuralnet(model_cfg.u_model)
 
     if isinstance(model_cfg, LSModelConfig):
-        return LSModelBundle(
-            v_model=_build_neuralnet(model_cfg.v_model),
-            sigma_model=_build_neuralnet(model_cfg.sigma_model),
-        )
+        model_cfg.validate()
+        return _build_neuralnet(model_cfg.ls_model)
 
     raise ValueError("Unknown model config type.")

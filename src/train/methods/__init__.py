@@ -1,5 +1,5 @@
 from ...loss_functions import LSLossConfig, PINNLossConfig
-from ...models import LSModelBundle, PINNModelBundle
+from ...models import AnyBuiltModel, LSModelConfig, PINNModelConfig
 from .LS import LSMethod
 from .PINN import PINNMethod
 from .base import TrainingMethod
@@ -7,21 +7,21 @@ from .base import TrainingMethod
 
 def get_training_method(
         loss_cfg: LSLossConfig | PINNLossConfig,
-        model_bundle: PINNModelBundle | LSModelBundle,
+        model_cfg: PINNModelConfig | LSModelConfig,
+        model: AnyBuiltModel,
     ) -> TrainingMethod:
     """Factory function for choosing training method plugin."""
 
     if isinstance(loss_cfg, PINNLossConfig):
-        if not isinstance(model_bundle, PINNModelBundle):
-            raise ValueError("PINN loss config requires PINN model config/bundle.")
-        return PINNMethod(u_model=model_bundle.u_model, loss_cfg=loss_cfg)
+        if not isinstance(model_cfg, PINNModelConfig):
+            raise ValueError("PINN loss config requires PINN model config.")
+        return PINNMethod(u_model=model, loss_cfg=loss_cfg)
 
     if isinstance(loss_cfg, LSLossConfig):
-        if not isinstance(model_bundle, LSModelBundle):
-            raise ValueError("LS loss config requires LS model config/bundle.")
+        if not isinstance(model_cfg, LSModelConfig):
+            raise ValueError("LS loss config requires LS model config.")
         return LSMethod(
-            v_model=model_bundle.v_model,
-            sigma_model=model_bundle.sigma_model,
+            ls_model=model,
             loss_cfg=loss_cfg,
         )
 

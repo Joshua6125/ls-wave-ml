@@ -1,13 +1,11 @@
 from .neuralnet import NeuralNet
 from .builder import (
-    AnyModelBundle,
+    AnyBuiltModel,
     AnyModelConfig,
-    LSModelBundle,
     LSModelConfig,
     NeuralNetModelConfig,
-    PINNModelBundle,
     PINNModelConfig,
-    build_model_bundle,
+    build_model,
 )
 
 __all__ = [
@@ -15,9 +13,7 @@ __all__ = [
     "NeuralNetModelConfig",
     "PINNModelConfig",
     "LSModelConfig",
-    "PINNModelBundle",
-    "LSModelBundle",
     "AnyModelConfig",
-    "AnyModelBundle",
-    "build_model_bundle",
+    "AnyBuiltModel",
+    "build_model",
 ]
