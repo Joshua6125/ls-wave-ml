@@ -8,12 +8,17 @@ from src.models import LSModelConfig, NeuralNetModelConfig, PINNModelConfig
 from src.train import TrainConfig
 
 
+@pytest.mark.PINN
 def test_pinn_training_smoke_runs_two_steps():
     integration_cfg = QuadratureConfig(dim=2, gauss_legendre_degree=3)
     loss_cfg = PINNLossConfig()
     train_cfg = TrainConfig(epochs=2, log_every=1, use_jit=False)
     model_cfg = PINNModelConfig(
-        u_model=NeuralNetModelConfig(hidden_dim=8, num_layers=2, output_dim=1)
+        u_model=NeuralNetModelConfig(
+            hidden_dim=8,
+            num_layers=2,
+            output_heads={"u": 1}
+        )
     )
 
     state, history = run_training(
@@ -28,6 +33,7 @@ def test_pinn_training_smoke_runs_two_steps():
     assert len(history) == 2
 
 
+@pytest.mark.PINN
 def test_pinn_rejects_ls_model_config():
     integration_cfg = QuadratureConfig(dim=2, gauss_legendre_degree=3)
     loss_cfg = PINNLossConfig()

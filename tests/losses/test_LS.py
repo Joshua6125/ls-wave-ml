@@ -8,6 +8,7 @@ from src.models import LSModelConfig, NeuralNetModelConfig, PINNModelConfig
 from src.train import TrainConfig
 
 
+@pytest.mark.LS
 def test_ls_training_smoke_runs_two_steps():
     integration_cfg = QuadratureConfig(dim=2, gauss_legendre_degree=3)
     loss_cfg = LSLossConfig()
@@ -32,12 +33,13 @@ def test_ls_training_smoke_runs_two_steps():
     assert len(history) == 2
 
 
+@pytest.mark.LS
 def test_ls_rejects_pinn_model_config():
     integration_cfg = QuadratureConfig(dim=2, gauss_legendre_degree=3)
     loss_cfg = LSLossConfig()
     train_cfg = TrainConfig(epochs=1, use_jit=False)
     model_cfg = PINNModelConfig(
-        u_model=NeuralNetModelConfig(hidden_dim=8, num_layers=2, output_dim=1)
+        u_model=NeuralNetModelConfig(hidden_dim=8, num_layers=2)
     )
 
     with pytest.raises(ValueError, match="LS loss config requires LS model config"):

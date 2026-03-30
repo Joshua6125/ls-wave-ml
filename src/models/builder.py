@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Literal, TypeAlias
+from typing import Literal, TypeAlias, Mapping
 
 from .neuralnet import NeuralNet
 
@@ -11,18 +11,16 @@ class NeuralNetModelConfig:
     kind: Literal["neuralnet"] = "neuralnet"
     hidden_dim: int = 64
     num_layers: int = 4
-    output_dim: int = 1
-    output_heads: dict[str, int] | None = None
+    output_heads: Mapping[str, int] = field(default_factory=lambda:{"output": 1})
 
     def validate(self) -> None:
         assert self.hidden_dim > 0, "hidden_dim must be strictly positive"
         assert self.num_layers > 0, "num_layers must be strictly positive"
-        assert self.output_dim > 0, "output_dim must be strictly positive"
-        if self.output_heads is not None:
-            assert len(self.output_heads) > 0, "output_heads must be non-empty when provided"
-            for name, dim in self.output_heads.items():
-                assert name, "output head names must be non-empty"
-                assert dim > 0, "each output head dimension must be strictly positive"
+        assert self.output_heads,   "output_heads must not be non-empty"
+        assert len(self.output_heads) > 0, "output_heads must be non-empty when provided"
+        for name, dim in self.output_heads.items():
+            assert name, "output head names must be non-empty"
+            assert dim > 0, "each output head dimension must be strictly positive"
 
 
 @dataclass(frozen=True)
@@ -46,8 +44,6 @@ class LSModelConfig:
 
     def validate(self) -> None:
         self.ls_model.validate()
-        if self.ls_model.output_heads is None:
-            raise ValueError("LS model config requires named output heads: 'v' and 'sigma'.")
         if "v" not in self.ls_model.output_heads or "sigma" not in self.ls_model.output_heads:
             raise ValueError("LS model config output_heads must include 'v' and 'sigma'.")
         if self.ls_model.output_heads["v"] != 1:
@@ -63,7 +59,6 @@ def _build_neuralnet(cfg: NeuralNetModelConfig) -> NeuralNet:
     return NeuralNet(
         hidden_dim=cfg.hidden_dim,
         num_layers=cfg.num_layers,
-        output_dim=cfg.output_dim,
         output_heads=cfg.output_heads,
     )
 

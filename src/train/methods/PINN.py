@@ -1,17 +1,16 @@
-from typing import Any
-
 import jax
 import jax.numpy as jnp
 
 from ...loss_functions import LossPINN, PINNLossConfig
 from .base import TrainingMethod
+from ...models import AnyBuiltModel
 
 class PINNMethod(TrainingMethod):
     """Method plugin for PINN training."""
 
     def __init__(
             self,
-            u_model: Any,
+            u_model: AnyBuiltModel,
             loss_cfg: PINNLossConfig
         ):
         self.u_model = u_model
@@ -21,11 +20,11 @@ class PINNMethod(TrainingMethod):
         """Initialize PINN model parameters."""
         return self.u_model.init(rng_key, sample_input)
 
-    def loss_functions(self, params: Any):
+    def loss_functions(self, params: AnyBuiltModel):
         """Create interior and boundary integrands for the current parameters."""
 
         def u_apply(x: jnp.ndarray) -> jnp.ndarray:
-            return self.u_model.apply(params, x)
+            return self.u_model.apply(params, x)["u"]
 
         loss = LossPINN(
             u_model=u_apply,

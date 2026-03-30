@@ -5,6 +5,7 @@ import jax.numpy as jnp
 
 from ...loss_functions import LSLossConfig, LossLS
 from .base import TrainingMethod
+from ...models import AnyBuiltModel
 
 
 class LSMethod(TrainingMethod):
@@ -12,7 +13,7 @@ class LSMethod(TrainingMethod):
 
     def __init__(
             self,
-            ls_model: Any,
+            ls_model: AnyBuiltModel,
             loss_cfg: LSLossConfig
         ):
         self.ls_model = ls_model
@@ -33,7 +34,7 @@ class LSMethod(TrainingMethod):
         sigma_sample = outputs["sigma"]
 
         if jnp.asarray(v_sample).reshape(-1).shape[0] != 1:
-            raise ValueError("LS model v head must output a scalar (shape [1]).")
+            raise ValueError("LS model v head must output a scalar.")
 
         expected_sigma_dim = max(sample_input.shape[0] - 1, 1)
         if jnp.asarray(sigma_sample).reshape(-1).shape[0] != expected_sigma_dim:
@@ -44,10 +45,10 @@ class LSMethod(TrainingMethod):
 
         return params
 
-    def loss_functions(self, params: Any):
+    def loss_functions(self, params: AnyBuiltModel):
         """Create interior and boundary integrands for the current parameters."""
 
-        def ls_apply(x: jnp.ndarray) -> dict[str, jnp.ndarray]:
+        def ls_apply(x: jnp.ndarray) -> jnp.ndarray:
             return self.ls_model.apply(params, x)
 
         def v_apply(x: jnp.ndarray) -> jnp.ndarray:
