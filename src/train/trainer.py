@@ -7,7 +7,7 @@ import jax.random as jr
 import optax
 
 from ..integration import NDCubeIntegration
-from .methods import TrainingMethod
+from .base import TrainingMethod
 from .state import TrainConfig, TrainState
 
 

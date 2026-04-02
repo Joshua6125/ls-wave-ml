@@ -1,0 +1,89 @@
+"""Least-Squares loss function."""
+
+from typing import Callable
+
+import jax
+import jax.numpy as jnp
+
+from ..base import Loss
+
+
+class LSLoss(Loss):
+    """Least-squares loss for the first-order acoustic wave system.
+
+    Points x have shape [d+1] with x[0] = t (time) and x[1:] spatial.
+
+    Parameters
+    ----------
+    v_model : Callable
+        Network v(x) -> scalar.
+    sigma_model : Callable
+        Network sigma(x) -> [d].
+    f : Callable or None
+        Source term for v equation.
+    g : Callable or None
+        Source term for sigma equation.
+    v0 : Callable or None
+        Initial condition v(0,-) = v0.
+    sigma0 : Callable or None
+        Initial condition sigma(0,-) = sigma0.
+    """
+
+    def __init__(
+        self,
+        v_model: Callable[[jnp.ndarray], jnp.ndarray],
+        sigma_model: Callable[[jnp.ndarray], jnp.ndarray],
+        f: Callable[[jnp.ndarray], jnp.ndarray] | None = None,
+        g: Callable[[jnp.ndarray], jnp.ndarray] | None = None,
+        v0: Callable[[jnp.ndarray], jnp.ndarray] | None = None,
+        sigma0: Callable[[jnp.ndarray], jnp.ndarray] | None = None,
+    ):
+        self.v_model = v_model
+        self.sigma_model = sigma_model
+        self.f = f
+        self.g = g
+        self.v0 = v0
+        self.sigma0 = sigma0
+
+    def _v(self, x: jnp.ndarray) -> jnp.ndarray:
+        return self.v_model(x).squeeze()
+
+    def _sigma(self, x: jnp.ndarray) -> jnp.ndarray:
+        return self.sigma_model(x).reshape(-1)
+
+    def _interior_residual(self, x: jnp.ndarray) -> jnp.ndarray:
+        """Sum of squared residuals of both equations."""
+        v_grad = jax.grad(self._v)(x)
+        dt_v = v_grad[0]
+        grad_v = v_grad[1:]
+
+        J_sigma = jax.jacobian(self._sigma)(x)
+        dt_sigma = J_sigma[:, 0]
+        div_sigma = jnp.trace(J_sigma[:, 1:])
+
+        f = self.f(x) if self.f is not None else 0.0
+        g = self.g(x) if self.g is not None else jnp.zeros_like(grad_v)
+
+        res_v = dt_v - div_sigma - f
+        res_sigma = dt_sigma - grad_v - g
+
+        return res_v ** 2 + jnp.sum(res_sigma ** 2)
+
+    def loss_interior(self, x_interior: jnp.ndarray) -> jnp.ndarray:
+        """Interior residuals."""
+        return jax.vmap(self._interior_residual)(x_interior)
+
+    def _ic_residual(self, x: jnp.ndarray) -> jnp.ndarray:
+        """IC residuals at t=t_min."""
+        v_val = self._v(x)
+        sigma_val = self._sigma(x)
+
+        v0_val = self.v0(x) if self.v0 is not None else 0.0
+        sigma0_val = self.sigma0(x) if self.sigma0 is not None else jnp.zeros_like(sigma_val)
+
+        return (v_val - v0_val) ** 2 + jnp.sum((sigma_val - sigma0_val) ** 2)
+
+    def loss_boundary(self, x_boundary: jnp.ndarray, normal_vector: jnp.ndarray) -> jnp.ndarray:
+        """IC loss at t=t_min. Other faces contribute zero."""
+        is_ic = normal_vector[:, 0] < 0
+        return jnp.where(is_ic, jax.vmap(self._ic_residual)(x_boundary), 0.0)

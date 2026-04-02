@@ -1,11 +1,12 @@
+"""Training execution interface."""
+
 from typing import Callable
 
 import jax.numpy as jnp
 
-from .loss_functions import AnyLossConfig
+from .algorithms import AlgorithmConfig, build_algorithm
 from .integration import IntegrationConfig, get_integrator
 from .models import AnyModelConfig, build_model
-from .train.methods import get_training_method
 from .train import (
     TrainConfig,
     TrainState,
@@ -16,24 +17,44 @@ from .train import (
 
 
 def run_training(
+        algorithm_cfg: AlgorithmConfig,
         integration_cfg: IntegrationConfig,
-        loss_cfg: AnyLossConfig,
-        train_cfg: TrainConfig,
         model_cfg: AnyModelConfig,
+        train_cfg: TrainConfig,
         sample_input: jnp.ndarray | None = None,
         state: TrainState | None = None,
         callback: Callable[[TrainStepMetrics], None] | None = None,
     ) -> tuple[TrainState, list[TrainStepMetrics]]:
-    """Execute training
+    """Execute training with algorithm.
 
+    Parameters
+    ----------
+    algorithm_cfg : AlgorithmConfig
+        Algorithm configuration (PINNConfig, LSConfig, etc.)
+        Bundles model architecture and PDE parameters.
+    integration_cfg : IntegrationConfig
+        Integration configuration (quadrature, Monte Carlo, etc.)
+    train_cfg : TrainConfig
+        Training hyperparameters (learning rate, steps, seed, etc.)
+    sample_input : jnp.ndarray | None
+        Sample input for model initialization.
+    state : TrainState | None
+        Continue from existing state.
+    callback : Callable | None
+        Called after each training step with metrics.
+
+    Returns
+    -------
+    tuple[TrainState, list[TrainStepMetrics]]
+        Final training state and metrics history
     """
     integrator = get_integrator(integration_cfg)
     model = build_model(model_cfg)
-    method = get_training_method(loss_cfg=loss_cfg, model_cfg=model_cfg, model=model)
+    algorithm = build_algorithm(algorithm_cfg, model)
     optimizer = get_optimizer(train_cfg)
 
     trainer = Trainer(
-        method=method,
+        method=algorithm,
         integrator=integrator,
         optimizer=optimizer,
         train_cfg=train_cfg,
