@@ -64,7 +64,7 @@ def get_algorithm_config(
         ),
         c=problem_config.c,
         ic_weight=10.0,
-        bc_weight=10.0,
+        bc_weight=100.0,
     )
 
 
@@ -75,7 +75,7 @@ def get_integration_config(
         dim=3,
         x_min=-problem_config.L,
         x_max=problem_config.L,
-        monte_carlo_boundary_samples=100,
+        monte_carlo_boundary_samples=1000,
         monte_carlo_interior_samples=1000,
         monte_carlo_seed=42
     )
@@ -241,7 +241,7 @@ def run_experiment(force_recompute_ref: bool = False) -> dict:
             "mean_abs_error": float(mean_abs_error),
             "final_loss": float(metrics[-1].total_loss),
             "best_loss": float(min(m.total_loss for m in metrics)),
-            "best_loss_epoch": int(np.argmin([m.total_loss for m in metrics])),
+            "best_loss_epoch": int(np.argmin([m.total_loss for m in metrics])) * train_config.log_every,
         },
         "convergence": {
             "converged": True,  # Will be updated based on loss trajectory
@@ -258,9 +258,6 @@ def run_experiment(force_recompute_ref: bool = False) -> dict:
     # Save results
     save_experiment_log(results, "experiments/results/experiment_log.json")
 
-    print("\n" + "="*70)
-    print("EXPERIMENT COMPLETED SUCCESSFULLY")
-    print("="*70)
     print("\nGenerated outputs:")
     for fname in results["output_files"]:
         if Path(fname).exists():

@@ -292,10 +292,6 @@ def plot_error_map(
         print(f"Error map saved to {output_path}")
 
 
-# ============================================================================
-# Experiment Logging
-# ============================================================================
-
 def save_experiment_log(
     log_dict: dict,
     output_path: str = "experiments/results/experiment_log.json",
