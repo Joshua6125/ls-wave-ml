@@ -2,7 +2,7 @@
 
 from .config import PINNConfig
 from .loss import PINNLoss
-from .algorithm import PINN
+from .method import PINN
 
 __all__ = [
     "PINNConfig",

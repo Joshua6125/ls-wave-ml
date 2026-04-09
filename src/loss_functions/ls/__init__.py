@@ -2,7 +2,7 @@
 
 from .config import LSConfig
 from .loss import LSLoss
-from .algorithm import LS
+from .method import LS
 
 __all__ = [
     "LSConfig",
