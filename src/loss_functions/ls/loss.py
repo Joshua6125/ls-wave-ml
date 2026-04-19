@@ -37,6 +37,7 @@ class LSLoss(Loss):
         g: Callable[[jnp.ndarray], jnp.ndarray] | None = None,
         v0: Callable[[jnp.ndarray], jnp.ndarray] | None = None,
         sigma0: Callable[[jnp.ndarray], jnp.ndarray] | None = None,
+        v_boundary: Callable[[jnp.ndarray], jnp.ndarray] | None = None,
     ):
         self.v_model = v_model
         self.sigma_model = sigma_model
@@ -44,6 +45,9 @@ class LSLoss(Loss):
         self.g = g
         self.v0 = v0
         self.sigma0 = sigma0
+        self.v_boundary = v_boundary
+        if self.v_boundary is not None:
+            print("WARNING: the LS formulation is only proven for Dirichlet boundary conditions")
 
     def _v(self, x: jnp.ndarray) -> jnp.ndarray:
         return self.v_model(x).squeeze()
@@ -83,7 +87,22 @@ class LSLoss(Loss):
 
         return (v_val - v0_val) ** 2 + jnp.sum((sigma_val - sigma0_val) ** 2)
 
+    def _spatial_bc_residual(self, x: jnp.ndarray) -> jnp.ndarray:
+        """Spatial boundary residual for the velocity field."""
+        if self.v_boundary is None:
+            return jnp.zeros(())
+
+        v_val = self._v(x)
+        v_boundary_val = self.v_boundary(x)
+        return (v_val - v_boundary_val) ** 2
+
     def loss_boundary(self, x_boundary: jnp.ndarray, normal_vector: jnp.ndarray) -> jnp.ndarray:
-        """IC loss at t=t_min. Other faces contribute zero."""
+        """IC loss at t=t_min and optional spatial Dirichlet loss for v."""
         is_ic = normal_vector[:, 0] < 0
-        return jnp.where(is_ic, jax.vmap(self._ic_residual)(x_boundary), 0.0)
+        is_spatial_bc = normal_vector[:, 0] == 0
+
+        return jnp.where(
+            is_ic,
+            jax.vmap(self._ic_residual)(x_boundary),
+            jnp.where(is_spatial_bc, jax.vmap(self._spatial_bc_residual)(x_boundary), 0.0),
+        )

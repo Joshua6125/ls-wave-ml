@@ -37,7 +37,7 @@ class LS(TrainingMethod):
         if jnp.asarray(v_sample).reshape(-1).shape[0] != 1:
             raise ValueError("LS model 'v' output must be scalar")
 
-        expected_sigma_dim = max(sample_input.shape[0] - 1, 1)
+        expected_sigma_dim = max(sample_input.shape[-1] - 1, 1)
         if jnp.asarray(sigma_sample).reshape(-1).shape[0] != expected_sigma_dim:
             raise ValueError(
                 f"LS model 'sigma' must output {expected_sigma_dim} values for input shape "
@@ -64,5 +64,6 @@ class LS(TrainingMethod):
             g=self.config.g,
             v0=self.config.v0,
             sigma0=self.config.sigma0,
+            v_boundary=self.config.v_boundary,
         )
         return loss.loss_functions()

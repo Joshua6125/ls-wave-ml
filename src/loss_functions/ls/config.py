@@ -21,3 +21,4 @@ class LSConfig(AlgorithmConfig):
     g: Callable[[jnp.ndarray], jnp.ndarray] | None = None
     v0: Callable[[jnp.ndarray], jnp.ndarray] | None = None
     sigma0: Callable[[jnp.ndarray], jnp.ndarray] | None = None
+    v_boundary: Callable[[jnp.ndarray], jnp.ndarray] | None = None
