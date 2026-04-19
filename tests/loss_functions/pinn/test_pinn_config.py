@@ -4,7 +4,7 @@ import pytest
 import jax.numpy as jnp
 
 from src.loss_functions import PINNConfig
-from src.models import PINNModelConfig
+from src.models import AnyModelConfig
 
 
 class TestPINNConfigInstantiation:
@@ -26,7 +26,7 @@ class TestPINNConfigInstantiation:
     def test_model_config_present(self):
         """model field contains PINNModelConfig."""
         config = PINNConfig()
-        assert isinstance(config.model, PINNModelConfig)
+        assert isinstance(config.model, AnyModelConfig)
 
     def test_scalar_wave_speed(self):
         """Wave speed c can be a scalar float."""

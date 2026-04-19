@@ -5,7 +5,6 @@ import jax
 import jax.numpy as jnp
 
 from src.loss_functions.pinn import PINN, PINNConfig
-from src.models import PINNModelConfig, NeuralNetModelConfig
 from tests.loss_functions.pinn.conftest_pinn import (
     make_mock_linear_model,
     make_mock_quadratic_model,

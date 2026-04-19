@@ -1,9 +1,6 @@
 """Tests for PINNLoss (loss computation)."""
 
-import pytest
-import jax
 import jax.numpy as jnp
-import numpy as np
 
 from src.loss_functions.pinn import PINNLoss
 
