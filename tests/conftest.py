@@ -20,7 +20,7 @@ def config_quadrature_1d():
         dim=1,
         x_min=0.0,
         x_max=1.0,
-        gauss_legendre_degree=20,
+        degree=20,
         adaptive_integration=False,
     )
 
@@ -32,7 +32,7 @@ def config_quadrature_2d():
         dim=2,
         x_min=0.0,
         x_max=1.0,
-        gauss_legendre_degree=15,
+        degree=15,
         adaptive_integration=False,
     )
 
@@ -44,7 +44,7 @@ def config_quadrature_3d():
         dim=3,
         x_min=0.0,
         x_max=1.0,
-        gauss_legendre_degree=8,
+        degree=8,
         adaptive_integration=False,
     )
 
@@ -100,7 +100,7 @@ def config_quadrature_custom(request):
         dim=params.get('dim', 1),
         x_min=params.get('x_min', 0.0),
         x_max=params.get('x_max', 1.0),
-        gauss_legendre_degree=params.get('degree', 20),
+        degree=params.get('degree', 20),
         adaptive_integration=params.get('adaptive', False),
     )
 

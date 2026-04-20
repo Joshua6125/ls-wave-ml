@@ -173,7 +173,7 @@ def test_quadrature_invalid_bounds(config_quadrature_1d):
 def test_quadrature_invalid_degree(config_quadrature_1d):
     from src.integration import QuadratureIntegration
 
-    bad_config = replace(config_quadrature_1d, gauss_legendre_degree=0)
+    bad_config = replace(config_quadrature_1d, degree=0)
     with pytest.raises(AssertionError, match="degree must be strictly positive"):
         QuadratureIntegration(bad_config)
 
