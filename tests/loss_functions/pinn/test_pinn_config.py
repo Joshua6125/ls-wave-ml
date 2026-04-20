@@ -7,6 +7,9 @@ from src.loss_functions import PINNConfig
 from src.models import AnyModelConfig
 
 
+pytestmark = pytest.mark.PINN
+
+
 class TestPINNConfigInstantiation:
     """Test valid PINNConfig instantiation."""
 
@@ -58,7 +61,7 @@ class TestPINNConfigInstantiation:
     def test_callable_ut0(self):
         """Initial velocity ut0 can be a callable."""
         def ut0_fn(x: jnp.ndarray) -> jnp.ndarray:
-            return jnp.asarray([0.5])
+            return jnp.asarray(0.5)
         config = PINNConfig(ut0=ut0_fn)
         assert callable(config.ut0)
 
@@ -96,20 +99,20 @@ class TestPINNConfigDefaults:
         config = PINNConfig()
         assert config.c == 1.0
 
-    def test_f_defaults_to_none(self):
+    def test_f_defaults_to_one(self):
         """f defaults to None."""
         config = PINNConfig()
-        assert config.f is None
+        assert config.f == 1.0
 
-    def test_u0_defaults_to_none(self):
+    def test_u0_defaults_to_one(self):
         """u0 defaults to None."""
         config = PINNConfig()
-        assert config.u0 is None
+        assert config.u0 == 1.0
 
-    def test_ut0_defaults_to_none(self):
+    def test_ut0_defaults_to_one(self):
         """ut0 defaults to None."""
         config = PINNConfig()
-        assert config.ut0 is None
+        assert config.ut0 == 1.0
 
     def test_ic_weight_defaults_to_one(self):
         """ic_weight defaults to 1.0."""
@@ -133,14 +136,14 @@ class TestPINNConfigTypes:
     def test_c_accepts_callable(self):
         """c accepts callable type."""
         def fn(x: jnp.ndarray) -> jnp.ndarray:
-            return jnp.asarray([1.0])
+            return jnp.asarray(1.0)
         config = PINNConfig(c=fn)
         assert callable(config.c)
 
-    def test_f_accepts_none(self):
-        """f accepts None value."""
-        config = PINNConfig(f=None)
-        assert config.f is None
+    # def test_f_accepts_none(self):
+    #     """f accepts None value."""
+    #     config = PINNConfig()
+    #     assert config.f is None
 
     def test_f_accepts_callable(self):
         """f accepts callable type."""
@@ -149,27 +152,27 @@ class TestPINNConfigTypes:
         config = PINNConfig(f=fn)
         assert callable(config.f)
 
-    def test_u0_accepts_none(self):
-        """u0 accepts None value."""
-        config = PINNConfig(u0=None)
-        assert config.u0 is None
+    # def test_u0_accepts_none(self):
+    #     """u0 accepts None value."""
+    #     config = PINNConfig()
+    #     assert config.u0 is None
 
     def test_u0_accepts_callable(self):
         """u0 accepts callable type."""
         def fn(x: jnp.ndarray) -> jnp.ndarray:
-            return jnp.asarray([0.0])
+            return jnp.asarray(0.0)
         config = PINNConfig(u0=fn)
         assert callable(config.u0)
 
-    def test_ut0_accepts_none(self):
-        """ut0 accepts None value."""
-        config = PINNConfig(ut0=None)
-        assert config.ut0 is None
+    # def test_ut0_accepts_none(self):
+    #     """ut0 accepts None value."""
+    #     config = PINNConfig(ut0=None)
+    #     assert config.ut0 is None
 
     def test_ut0_accepts_callable(self):
         """ut0 accepts callable type."""
         def fn(x: jnp.ndarray) -> jnp.ndarray:
-            return jnp.asarray([1.0])
+            return jnp.asarray(1.0)
         config = PINNConfig(ut0=fn)
         assert callable(config.ut0)
 
@@ -202,13 +205,13 @@ class TestPINNConfigMultipleArgs:
     def test_all_fields_specified(self):
         """Can specify all fields in PINNConfig."""
         def c_fn(x: jnp.ndarray) -> jnp.ndarray:
-            return jnp.asarray([1.0])
+            return jnp.asarray(1.0)
         def f_fn(x: jnp.ndarray) -> jnp.ndarray:
-            return jnp.asarray([0.0])
+            return jnp.asarray(0.0)
         def u0_fn(x: jnp.ndarray) -> jnp.ndarray:
-            return jnp.asarray([0.0])
+            return jnp.asarray(0.0)
         def ut0_fn(x: jnp.ndarray) -> jnp.ndarray:
-            return jnp.asarray([0.0])
+            return jnp.asarray(0.0)
 
         config = PINNConfig(
             c=c_fn,
@@ -318,7 +321,7 @@ class TestPINNConfigCallableReturnTypes:
     def test_c_callable_returns_scalar(self):
         """c callable should return scalar."""
         def c_fn(x: jnp.ndarray) -> jnp.ndarray:
-            return jnp.asarray([1.5])
+            return jnp.asarray(1.5)
 
         config = PINNConfig(c=c_fn)
         result = config.c(jnp.array([0.5, 0.5])) if callable(config.c) else None

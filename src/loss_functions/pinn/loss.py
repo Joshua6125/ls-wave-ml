@@ -20,11 +20,11 @@ class PINNLoss(Loss):
         Neural network u(x) -> scalar.
     c : float or Callable
         Wave speed c(x,t).
-    f : Callable or None
+    f : float or Callable
         Forcing term f(x,t).
-    u0 : Callable or None
+    u0 : float or Callable
         Initial displacement u(0,-) = u0.
-    ut0 : Callable or None
+    ut0 : float or Callable
         Initial velocity ∂_t u(0,-) = ut0.
     ic_weight : float
         Weight for initial condition loss.
@@ -35,10 +35,10 @@ class PINNLoss(Loss):
     def __init__(
         self,
         u_model: Callable[[jnp.ndarray], jnp.ndarray],
-        c: float | Callable[[jnp.ndarray], jnp.ndarray],
-        f: Callable[[jnp.ndarray], jnp.ndarray] | None = None,
-        u0: Callable[[jnp.ndarray], jnp.ndarray] | None = None,
-        ut0: Callable[[jnp.ndarray], jnp.ndarray] | None = None,
+        c: float | Callable[[jnp.ndarray], jnp.ndarray] = 1.0,
+        f: float | Callable[[jnp.ndarray], jnp.ndarray] = 1.0,
+        u0: float | Callable[[jnp.ndarray], jnp.ndarray] = 1.0,
+        ut0: float | Callable[[jnp.ndarray], jnp.ndarray] = 1.0,
         ic_weight: float = 1.0,
         bc_weight: float = 1.0,
     ):
@@ -59,12 +59,14 @@ class PINNLoss(Loss):
         u_tt = H[0, 0]
         laplacian_u = jnp.trace(H[1:, 1:])
 
-        if callable(self.c):
-            c = self.c(x)
-        else:
-            c = self.c
+        c = self.c(x) if callable(self.c) else self.c
+        if not jnp.isscalar(c):
+            raise ValueError("c should be scalar or return scalar type.")
 
-        f = self.f(x) if self.f is not None else 0.0
+        f = self.f(x) if callable(self.f) else self.f
+        if not jnp.isscalar(f):
+            raise ValueError("f should be scalar or return scalar type.")
+
         return (u_tt - c**2 * laplacian_u - f) ** 2
 
     def loss_interior(self, x_interior: jnp.ndarray) -> jnp.ndarray:
@@ -76,8 +78,13 @@ class PINNLoss(Loss):
         u_val = self._u(x)
         ut_val = jax.grad(self._u)(x)[0]
 
-        u0_val = self.u0(x) if self.u0 is not None else 0.0
-        ut0_val = self.ut0(x) if self.ut0 is not None else 0.0
+        u0_val = self.u0(x) if callable(self.u0) else self.u0
+        if not jnp.isscalar(u0_val):
+            raise ValueError("u0 should be scalar or return scalar type.")
+
+        ut0_val = self.ut0(x) if callable(self.ut0) else self.ut0
+        if not jnp.isscalar(ut0_val):
+            raise ValueError("ut0 should be scalar or return scalar type.")
 
         return self.ic_weight * ((u_val - u0_val) ** 2 + (ut_val - ut0_val) ** 2)
 

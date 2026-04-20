@@ -1,8 +1,12 @@
 """Tests for PINNLoss (loss computation)."""
 
+import pytest
 import jax.numpy as jnp
 
 from src.loss_functions.pinn import PINNLoss
+
+
+pytestmark = pytest.mark.PINN
 
 
 class TestPINNLossInitialisation:
@@ -22,7 +26,7 @@ class TestPINNLossInitialisation:
         def u_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.sum(x)
         def c_fn(x: jnp.ndarray) -> jnp.ndarray:
-            return jnp.asarray([1.0])
+            return jnp.asarray(1.0)
 
         loss = PINNLoss(u_model=u_fn, c=c_fn)
         assert callable(loss.c)
@@ -32,9 +36,9 @@ class TestPINNLossInitialisation:
         def u_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.sum(x)
         def f_fn(x: jnp.ndarray) -> jnp.ndarray:
-            return jnp.asarray([0.0])
+            return jnp.asarray(0.0)
 
-        loss = PINNLoss(u_model=u_fn, c=1.0, f=f_fn)
+        loss = PINNLoss(u_model=u_fn, f=f_fn)
         assert loss.f is f_fn
 
     def test_init_with_ic_conditions(self):
@@ -42,11 +46,11 @@ class TestPINNLossInitialisation:
         def u_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.sum(x)
         def u0_fn(x: jnp.ndarray) -> jnp.ndarray:
-            return jnp.asarray([0.0])
+            return jnp.asarray(0.0)
         def ut0_fn(x: jnp.ndarray) -> jnp.ndarray:
-            return jnp.asarray([0.0])
+            return jnp.asarray(0.0)
 
-        loss = PINNLoss(u_model=u_fn, c=1.0, u0=u0_fn, ut0=ut0_fn)
+        loss = PINNLoss(u_model=u_fn, u0=u0_fn, ut0=ut0_fn)
         assert loss.u0 is u0_fn
         assert loss.ut0 is ut0_fn
 
@@ -55,7 +59,7 @@ class TestPINNLossInitialisation:
         def u_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.sum(x)
 
-        loss = PINNLoss(u_model=u_fn, c=1.0, ic_weight=2.0, bc_weight=3.0)
+        loss = PINNLoss(u_model=u_fn, ic_weight=2.0, bc_weight=3.0)
         assert loss.ic_weight == 2.0
         assert loss.bc_weight == 3.0
 
@@ -64,7 +68,7 @@ class TestPINNLossInitialisation:
         def u_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.sum(x)
 
-        loss = PINNLoss(u_model=u_fn, c=1.0)
+        loss = PINNLoss(u_model=u_fn)
         assert loss.ic_weight == 1.0
         assert loss.bc_weight == 1.0
 
@@ -77,31 +81,31 @@ class TestPINNLossUMethod:
         def u_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.sum(x)
 
-        loss = PINNLoss(u_model=u_fn, c=1.0)
+        loss = PINNLoss(u_model=u_fn)
         x = jnp.array([0.5, 0.5])
         result = loss._u(x)
 
         # Should be scalar
-        assert jnp.asarray(result).shape == ()
+        assert jnp.isscalar(result)
 
     def test_u_squeezes_output(self):
         """_u squeezes model output."""
         def u_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.array([jnp.sum(x)])  # Returns shape (1,)
 
-        loss = PINNLoss(u_model=u_fn, c=1.0)
+        loss = PINNLoss(u_model=u_fn)
         x = jnp.array([0.5, 0.5])
         result = loss._u(x)
 
         # Should be scalar after squeeze
-        assert jnp.asarray(result).shape == ()
+        assert jnp.isscalar(result)
 
     def test_u_with_quadratic_model(self):
         """_u works with quadratic model."""
         def u_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.sum(x**2)
 
-        loss = PINNLoss(u_model=u_fn, c=1.0)
+        loss = PINNLoss(u_model=u_fn)
         x = jnp.array([0.5, 0.5])
         result = loss._u(x)
 
@@ -113,7 +117,7 @@ class TestPINNLossUMethod:
         def u_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.sin(jnp.sum(x))
 
-        loss = PINNLoss(u_model=u_fn, c=1.0)
+        loss = PINNLoss(u_model=u_fn)
         x = jnp.array([0.5, 0.5])
         result = loss._u(x)
 
@@ -129,7 +133,7 @@ class TestPINNLossPDEResidual:
         def u_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.sum(x)  # u(t,x) = t + x
 
-        loss = PINNLoss(u_model=u_fn, c=1.0)
+        loss = PINNLoss(u_model=u_fn, f=0.0, u0=0.0, ut0=0.0)
         x = jnp.array([0.5, 0.5])
 
         # For u = t + x: u_tt = 0, u_xx = 0
@@ -167,9 +171,9 @@ class TestPINNLossPDEResidual:
         def u_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.sum(x)
         def f_fn(x: jnp.ndarray) -> jnp.ndarray:
-            return jnp.ndarray([1.0])
+            return jnp.asarray(1.0)
 
-        loss = PINNLoss(u_model=u_fn, c=1.0, f=f_fn)
+        loss = PINNLoss(u_model=u_fn, f=f_fn)
         x = jnp.array([0.5, 0.5])
 
         residual = loss._pde_residual(x)
@@ -180,7 +184,7 @@ class TestPINNLossPDEResidual:
         def u_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.sum(x)
 
-        loss = PINNLoss(u_model=u_fn, c=1.0, f=None)
+        loss = PINNLoss(u_model=u_fn)
         x = jnp.array([0.5, 0.5])
 
         residual = loss._pde_residual(x)
@@ -191,7 +195,7 @@ class TestPINNLossPDEResidual:
         def u_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.sin(jnp.sum(x))
 
-        loss = PINNLoss(u_model=u_fn, c=1.0)
+        loss = PINNLoss(u_model=u_fn)
         x = jnp.array([0.5, 0.5])
 
         residual = loss._pde_residual(x)
@@ -203,7 +207,7 @@ class TestPINNLossPDEResidual:
             # u(t,x,y) = x^2 + y^2 + t^2
             return x[0]**2 + x[1]**2 + x[2]**2
 
-        loss = PINNLoss(u_model=u_fn, c=1.0)
+        loss = PINNLoss(u_model=u_fn)
         x = jnp.array([0.5, 0.5, 0.5])
 
         residual = loss._pde_residual(x)
@@ -218,11 +222,11 @@ class TestPINNLossICResidual:
         def u_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.sum(x)
         def u0_fn(x: jnp.ndarray) -> jnp.ndarray:
-            return jnp.asarray([0.0])
+            return jnp.asarray(0.0)
         def ut0_fn(x: jnp.ndarray) -> jnp.ndarray:
-            return jnp.asarray([0.0])
+            return jnp.asarray(0.0)
 
-        loss = PINNLoss(u_model=u_fn, c=1.0, u0=u0_fn, ut0=ut0_fn, ic_weight=1.0)
+        loss = PINNLoss(u_model=u_fn, u0=u0_fn, ut0=ut0_fn, ic_weight=1.0)
         x = jnp.array([0.0, 0.5])
 
         residual = loss._ic_residual(x)
@@ -234,9 +238,9 @@ class TestPINNLossICResidual:
         def u_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.sum(x)
         def u0_fn(x: jnp.ndarray) -> jnp.ndarray:
-            return jnp.asarray([1.0])
+            return jnp.asarray(1.0)
 
-        loss = PINNLoss(u_model=u_fn, c=1.0, u0=u0_fn, ut0=None)
+        loss = PINNLoss(u_model=u_fn, u0=u0_fn, ut0=0.0)
         x = jnp.array([0.0, 0.0])
 
         residual = loss._ic_residual(x)
@@ -247,9 +251,9 @@ class TestPINNLossICResidual:
         def u_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.sum(x)
         def ut0_fn(x: jnp.ndarray) -> jnp.ndarray:
-            return jnp.asarray([0.5])
+            return jnp.asarray(0.5)
 
-        loss = PINNLoss(u_model=u_fn, c=1.0, u0=None, ut0=ut0_fn)
+        loss = PINNLoss(u_model=u_fn, u0=0.0, ut0=ut0_fn)
         x = jnp.array([0.0, 0.0])
 
         residual = loss._ic_residual(x)
@@ -260,7 +264,7 @@ class TestPINNLossICResidual:
         def u_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.sum(x)
 
-        loss = PINNLoss(u_model=u_fn, c=1.0, u0=None, ut0=None, ic_weight=1.0)
+        loss = PINNLoss(u_model=u_fn, u0=0.0, ut0=0.0, ic_weight=1.0)
         x = jnp.array([0.0, 0.5])
 
         residual = loss._ic_residual(x)
@@ -273,8 +277,8 @@ class TestPINNLossICResidual:
         def u0_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.asarray(1.0)
 
-        loss_w1 = PINNLoss(u_model=u_fn, c=1.0, u0=u0_fn, ic_weight=1.0)
-        loss_w2 = PINNLoss(u_model=u_fn, c=1.0, u0=u0_fn, ic_weight=2.0)
+        loss_w1 = PINNLoss(u_model=u_fn, u0=u0_fn, ic_weight=1.0)
+        loss_w2 = PINNLoss(u_model=u_fn, u0=u0_fn, ic_weight=2.0)
 
         x = jnp.array([0.0, 0.5])
         r1 = loss_w1._ic_residual(x)
@@ -287,9 +291,9 @@ class TestPINNLossICResidual:
         def u_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.sum(x)
         def u0_fn(x: jnp.ndarray) -> jnp.ndarray:
-            return jnp.asarray([1.0])
+            return jnp.asarray(1.0)
 
-        loss = PINNLoss(u_model=u_fn, c=1.0, u0=u0_fn, ic_weight=0.0)
+        loss = PINNLoss(u_model=u_fn, u0=u0_fn, ic_weight=0.0)
         x = jnp.array([0.0, 0.5])
 
         residual = loss._ic_residual(x)
@@ -304,9 +308,9 @@ class TestPINNLossICResidual:
         def u0_fn(x: jnp.ndarray) -> jnp.ndarray:
             return x[1]  # u0(x) = x
         def ut0_fn(x: jnp.ndarray) -> jnp.ndarray:
-            return jnp.asarray([0.0])  # ut0(x) = 0
+            return jnp.asarray(0.0)  # ut0(x) = 0
 
-        loss = PINNLoss(u_model=u_fn, c=1.0, u0=u0_fn, ut0=ut0_fn, ic_weight=1.0)
+        loss = PINNLoss(u_model=u_fn, u0=u0_fn, ut0=ut0_fn, ic_weight=1.0)
         x = jnp.array([0.0, 0.5])
 
         residual = loss._ic_residual(x)
@@ -322,7 +326,7 @@ class TestPINNLossSpatialBCResidual:
         def u_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.asarray(0.5)
 
-        loss = PINNLoss(u_model=u_fn, c=1.0, bc_weight=1.0)
+        loss = PINNLoss(u_model=u_fn, bc_weight=1.0)
         x = jnp.array([0.5, 0.0])  # At spatial boundary
 
         residual = loss._spatial_bc_residual(x)
@@ -335,7 +339,7 @@ class TestPINNLossSpatialBCResidual:
         def u_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.asarray(0.0)
 
-        loss = PINNLoss(u_model=u_fn, c=1.0, bc_weight=1.0)
+        loss = PINNLoss(u_model=u_fn, bc_weight=1.0)
         x = jnp.array([0.5, 0.0])
 
         residual = loss._spatial_bc_residual(x)
@@ -346,8 +350,8 @@ class TestPINNLossSpatialBCResidual:
         def u_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.asarray(1.0)
 
-        loss_w1 = PINNLoss(u_model=u_fn, c=1.0, bc_weight=1.0)
-        loss_w2 = PINNLoss(u_model=u_fn, c=1.0, bc_weight=3.0)
+        loss_w1 = PINNLoss(u_model=u_fn, bc_weight=1.0)
+        loss_w2 = PINNLoss(u_model=u_fn, bc_weight=3.0)
 
         x = jnp.array([0.5, 0.0])
         r1 = loss_w1._spatial_bc_residual(x)
@@ -360,7 +364,7 @@ class TestPINNLossSpatialBCResidual:
         def u_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.asarray(1.0)
 
-        loss = PINNLoss(u_model=u_fn, c=1.0, bc_weight=0.0)
+        loss = PINNLoss(u_model=u_fn, bc_weight=0.0)
         x = jnp.array([0.5, 0.0])
 
         residual = loss._spatial_bc_residual(x)
@@ -375,7 +379,7 @@ class TestPINNLossInteriorLoss:
         def u_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.sum(x)
 
-        loss = PINNLoss(u_model=u_fn, c=1.0)
+        loss = PINNLoss(u_model=u_fn)
         x_interior = jnp.array([[0.5, 0.5]])  # Shape (1, 2)
 
         result = loss.loss_interior(x_interior)
@@ -387,7 +391,7 @@ class TestPINNLossInteriorLoss:
         def u_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.sum(x)
 
-        loss = PINNLoss(u_model=u_fn, c=1.0)
+        loss = PINNLoss(u_model=u_fn)
         x_interior = jnp.array([
             [0.5, 0.5],
             [0.2, 0.3],
@@ -403,7 +407,7 @@ class TestPINNLossInteriorLoss:
         def u_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.sum(x)
 
-        loss = PINNLoss(u_model=u_fn, c=1.0)
+        loss = PINNLoss(u_model=u_fn)
         x_interior = jnp.zeros((100, 2))  # Shape (100, 2)
 
         result = loss.loss_interior(x_interior)
@@ -416,7 +420,7 @@ class TestPINNLossInteriorLoss:
         def f_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.sin(jnp.sum(x))
 
-        loss = PINNLoss(u_model=u_fn, c=1.0, f=f_fn)
+        loss = PINNLoss(u_model=u_fn, f=f_fn)
         x_interior = jnp.array([[0.5, 0.5]])
 
         result = loss.loss_interior(x_interior)
@@ -428,7 +432,7 @@ class TestPINNLossInteriorLoss:
         def u_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.sum(x)
 
-        loss = PINNLoss(u_model=u_fn, c=1.0)
+        loss = PINNLoss(u_model=u_fn)
         x_interior = jnp.array([
             [0.5, 0.5, 0.5],  # [t, x, y]
             [0.3, 0.2, 0.7],
@@ -446,9 +450,9 @@ class TestPINNLossBoundaryLoss:
         def u_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.sum(x)
         def u0_fn(x: jnp.ndarray) -> jnp.ndarray:
-            return jnp.asarray([0.0])
+            return jnp.asarray(0.0)
 
-        loss = PINNLoss(u_model=u_fn, c=1.0, u0=u0_fn, ic_weight=1.0)
+        loss = PINNLoss(u_model=u_fn, u0=u0_fn, ic_weight=1.0)
 
         x_boundary = jnp.array([[0.0, 0.5]])  # IC point
         normal_vector = jnp.array([[-1.0, 0.0]])  # Negative t-component
@@ -462,7 +466,7 @@ class TestPINNLossBoundaryLoss:
         def u_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.sum(x)
 
-        loss = PINNLoss(u_model=u_fn, c=1.0, bc_weight=1.0)
+        loss = PINNLoss(u_model=u_fn, bc_weight=1.0)
 
         x_boundary = jnp.array([[0.5, 0.0]])  # Spatial BC point
         normal_vector = jnp.array([[0.0, 1.0]])  # Zero t-component
@@ -476,9 +480,9 @@ class TestPINNLossBoundaryLoss:
         def u_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.sum(x)
         def u0_fn(x: jnp.ndarray) -> jnp.ndarray:
-            return jnp.asarray([0.0])
+            return jnp.asarray(0.0)
 
-        loss = PINNLoss(u_model=u_fn, c=1.0, u0=u0_fn, ic_weight=1.0, bc_weight=1.0)
+        loss = PINNLoss(u_model=u_fn, u0=u0_fn, ic_weight=1.0, bc_weight=1.0)
 
         x_boundary = jnp.array([
             [0.0, 0.5],   # IC point
@@ -498,7 +502,7 @@ class TestPINNLossBoundaryLoss:
         def u_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.sum(x)
 
-        loss = PINNLoss(u_model=u_fn, c=1.0)
+        loss = PINNLoss(u_model=u_fn)
 
         x_boundary = jnp.array([[0.5, 0.5]])  # Interior point
         normal_vector = jnp.array([[1.0, 0.0]])  # Positive t-component
@@ -511,9 +515,9 @@ class TestPINNLossBoundaryLoss:
         def u_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.sum(x)
         def u0_fn(x: jnp.ndarray) -> jnp.ndarray:
-            return jnp.asarray([0.0])
+            return jnp.asarray(0.0)
 
-        loss = PINNLoss(u_model=u_fn, c=1.0, u0=u0_fn, ic_weight=1.0, bc_weight=1.0)
+        loss = PINNLoss(u_model=u_fn, u0=u0_fn, ic_weight=1.0, bc_weight=1.0)
 
         x_boundary = jnp.array([
             [0.0, 0.2],   # IC
@@ -541,7 +545,7 @@ class TestPINNLossFunctionsInterface:
         def u_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.sum(x)
 
-        loss = PINNLoss(u_model=u_fn, c=1.0)
+        loss = PINNLoss(u_model=u_fn)
         result = loss.loss_functions()
 
         assert isinstance(result, tuple)
@@ -552,7 +556,7 @@ class TestPINNLossFunctionsInterface:
         def u_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.sum(x)
 
-        loss = PINNLoss(u_model=u_fn, c=1.0)
+        loss = PINNLoss(u_model=u_fn)
         interior_loss_fn, boundary_loss_fn = loss.loss_functions()
 
         assert callable(interior_loss_fn)
@@ -563,7 +567,7 @@ class TestPINNLossFunctionsInterface:
         def u_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.sum(x)
 
-        loss = PINNLoss(u_model=u_fn, c=1.0)
+        loss = PINNLoss(u_model=u_fn)
         interior_loss_fn, _ = loss.loss_functions()
 
         x_interior = jnp.array([[0.5, 0.5]])
@@ -575,7 +579,7 @@ class TestPINNLossFunctionsInterface:
         def u_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.sum(x)
 
-        loss = PINNLoss(u_model=u_fn, c=1.0)
+        loss = PINNLoss(u_model=u_fn)
         _, boundary_loss_fn = loss.loss_functions()
 
         x_boundary = jnp.array([[0.5, 0.5]])
@@ -592,7 +596,7 @@ class TestPINNLossNumericalEdgeCases:
         def u_fn(x: jnp.ndarray) -> jnp.ndarray:
             return 1e-6 * jnp.sum(x)
 
-        loss = PINNLoss(u_model=u_fn, c=1.0)
+        loss = PINNLoss(u_model=u_fn)
         x = jnp.array([0.5, 0.5])
 
         residual = loss._pde_residual(x)
@@ -625,7 +629,7 @@ class TestPINNLossNumericalEdgeCases:
         def u_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.asarray(0.0)
 
-        loss = PINNLoss(u_model=u_fn, c=1.0)
+        loss = PINNLoss(u_model=u_fn)
         x = jnp.array([0.0, 0.0])
 
         residual = loss._pde_residual(x)
@@ -640,7 +644,7 @@ class TestPINNLossRegressionKnownSolutions:
         def u_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.asarray(0.0)
 
-        loss = PINNLoss(u_model=u_fn, c=1.0)
+        loss = PINNLoss(u_model=u_fn, f=0.0, u0=0.0, ut0=0.0)
         x = jnp.array([0.5, 0.5])
 
         residual = loss._pde_residual(x)
@@ -655,7 +659,7 @@ class TestPINNLossRegressionKnownSolutions:
         def ut0_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.asarray(0.0)
 
-        loss = PINNLoss(u_model=u_fn, c=1.0, u0=u0_fn, ut0=ut0_fn, ic_weight=1.0)
+        loss = PINNLoss(u_model=u_fn, u0=u0_fn, ut0=ut0_fn, ic_weight=1.0)
         x = jnp.array([0.0, 0.5])
 
         residual = loss._ic_residual(x)
@@ -666,7 +670,7 @@ class TestPINNLossRegressionKnownSolutions:
         def u_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.asarray(1.0)  # Constant
 
-        loss = PINNLoss(u_model=u_fn, c=1.0)
+        loss = PINNLoss(u_model=u_fn, f=0.0, u0=0)
         x = jnp.array([0.5, 0.5])
 
         residual = loss._pde_residual(x)
@@ -682,7 +686,7 @@ class TestPINNLossDimensionHandling:
             # x shape: (2,) = [t, x]
             return jnp.sum(x)
 
-        loss = PINNLoss(u_model=u_fn, c=1.0)
+        loss = PINNLoss(u_model=u_fn)
         x = jnp.array([0.5, 0.5])
 
         residual = loss._pde_residual(x)
@@ -694,7 +698,7 @@ class TestPINNLossDimensionHandling:
             # x shape: (3,) = [t, x, y]
             return jnp.sum(x)
 
-        loss = PINNLoss(u_model=u_fn, c=1.0)
+        loss = PINNLoss(u_model=u_fn)
         x = jnp.array([0.5, 0.5, 0.5])
 
         residual = loss._pde_residual(x)
@@ -706,7 +710,7 @@ class TestPINNLossDimensionHandling:
             # x shape: (4,) = [t, x, y, z]
             return jnp.sum(x)
 
-        loss = PINNLoss(u_model=u_fn, c=1.0)
+        loss = PINNLoss(u_model=u_fn)
         x = jnp.array([0.5, 0.5, 0.5, 0.5])
 
         residual = loss._pde_residual(x)
@@ -736,7 +740,7 @@ class TestPINNLossCallableIntegration:
         def f_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.sin(jnp.sum(x))
 
-        loss = PINNLoss(u_model=u_fn, c=1.0, f=f_fn)
+        loss = PINNLoss(u_model=u_fn, f=f_fn)
         x = jnp.array([0.5, 0.5])
 
         residual = loss._pde_residual(x)
@@ -753,7 +757,7 @@ class TestPINNLossCallableIntegration:
         def u0_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.sin(x[1])
         def ut0_fn(x: jnp.ndarray) -> jnp.ndarray:
-            return jnp.asarray([0.0])
+            return jnp.asarray(0.0)
 
         loss = PINNLoss(
             u_model=u_fn,

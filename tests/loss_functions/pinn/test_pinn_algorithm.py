@@ -13,6 +13,9 @@ from tests.loss_functions.pinn.conftest import (
 )
 
 
+pytestmark = pytest.mark.PINN
+
+
 class TestPINNInitialisation:
     """Test PINN algorithm initialisation."""
 
@@ -233,7 +236,7 @@ class TestPINNLossFunctionsWithConfig:
 
     def test_loss_functions_uses_config_f(self):
         """Loss functions use f from config."""
-        def f_fn(x):
+        def f_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.sin(jnp.sum(x))
 
         model = make_mock_linear_model()
@@ -253,7 +256,7 @@ class TestPINNLossFunctionsWithConfig:
         def u0_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.sin(x[1])
         def ut0_fn(x: jnp.ndarray) -> jnp.ndarray:
-            return jnp.asarray([0.0])
+            return jnp.asarray(0.0)
 
         model = make_mock_linear_model()
         config = PINNConfig(u0=u0_fn, ut0=ut0_fn)
@@ -407,13 +410,13 @@ class TestPINNWithComplexConfigs:
     def test_pinn_with_all_config_options(self):
         """PINN works with all config options specified."""
         def c_fn(x: jnp.ndarray) -> jnp.ndarray:
-            return jnp.asarray([1.0])
+            return jnp.asarray(1.0)
         def f_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.sin(jnp.sum(x))
         def u0_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.cos(x[1])
         def ut0_fn(x: jnp.ndarray) -> jnp.ndarray:
-            return jnp.asarray([0.0])
+            return jnp.asarray(0.0)
 
         model = make_mock_linear_model()
         config = PINNConfig(
