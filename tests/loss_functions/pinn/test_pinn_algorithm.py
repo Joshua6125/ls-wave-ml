@@ -5,7 +5,7 @@ import jax
 import jax.numpy as jnp
 
 from src.loss_functions.pinn import PINN, PINNConfig
-from tests.loss_functions.pinn.conftest_pinn import (
+from tests.loss_functions.pinn.conftest import (
     make_mock_linear_model,
     make_mock_quadratic_model,
     make_mock_invalid_model,
@@ -13,11 +13,11 @@ from tests.loss_functions.pinn.conftest_pinn import (
 )
 
 
-class TestPINNInitialization:
-    """Test PINN algorithm initialization."""
+class TestPINNInitialisation:
+    """Test PINN algorithm initialisation."""
 
     def test_pinn_init_with_model_and_config(self):
-        """PINN can be initialized with model and config."""
+        """PINN can be initialised with model and config."""
         model = make_mock_linear_model()
         config = PINNConfig()
 
@@ -36,7 +36,7 @@ class TestPINNInitialization:
 
 
 class TestPINNInitParams:
-    """Test init_params method (parameter initialization)."""
+    """Test init_params method (parameter initialisation)."""
 
     def test_init_params_returns_params(self):
         """init_params returns parameters dictionary."""
@@ -250,10 +250,10 @@ class TestPINNLossFunctionsWithConfig:
 
     def test_loss_functions_uses_config_ic_conditions(self):
         """Loss functions use u0, ut0 from config."""
-        def u0_fn(x):
+        def u0_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.sin(x[1])
-        def ut0_fn(x):
-            return 0.0
+        def ut0_fn(x: jnp.ndarray) -> jnp.ndarray:
+            return jnp.asarray([0.0])
 
         model = make_mock_linear_model()
         config = PINNConfig(u0=u0_fn, ut0=ut0_fn)
@@ -406,14 +406,14 @@ class TestPINNWithComplexConfigs:
 
     def test_pinn_with_all_config_options(self):
         """PINN works with all config options specified."""
-        def c_fn(x):
-            return 1.0
-        def f_fn(x):
+        def c_fn(x: jnp.ndarray) -> jnp.ndarray:
+            return jnp.asarray([1.0])
+        def f_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.sin(jnp.sum(x))
-        def u0_fn(x):
+        def u0_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.cos(x[1])
-        def ut0_fn(x):
-            return 0.0
+        def ut0_fn(x: jnp.ndarray) -> jnp.ndarray:
+            return jnp.asarray([0.0])
 
         model = make_mock_linear_model()
         config = PINNConfig(

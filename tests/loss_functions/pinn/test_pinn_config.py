@@ -57,8 +57,8 @@ class TestPINNConfigInstantiation:
 
     def test_callable_ut0(self):
         """Initial velocity ut0 can be a callable."""
-        def ut0_fn(x):
-            return 0.5
+        def ut0_fn(x: jnp.ndarray) -> jnp.ndarray:
+            return jnp.asarray([0.5])
         config = PINNConfig(ut0=ut0_fn)
         assert callable(config.ut0)
 
@@ -132,7 +132,8 @@ class TestPINNConfigTypes:
 
     def test_c_accepts_callable(self):
         """c accepts callable type."""
-        fn = lambda x: 1.0
+        def fn(x: jnp.ndarray) -> jnp.ndarray:
+            return jnp.asarray([1.0])
         config = PINNConfig(c=fn)
         assert callable(config.c)
 
@@ -143,7 +144,8 @@ class TestPINNConfigTypes:
 
     def test_f_accepts_callable(self):
         """f accepts callable type."""
-        fn = lambda x: jnp.sum(x)
+        def fn(x: jnp.ndarray) -> jnp.ndarray:
+            return jnp.sum(x)
         config = PINNConfig(f=fn)
         assert callable(config.f)
 
@@ -154,7 +156,8 @@ class TestPINNConfigTypes:
 
     def test_u0_accepts_callable(self):
         """u0 accepts callable type."""
-        fn = lambda x: 0.0
+        def fn(x: jnp.ndarray) -> jnp.ndarray:
+            return jnp.asarray([0.0])
         config = PINNConfig(u0=fn)
         assert callable(config.u0)
 
@@ -165,7 +168,8 @@ class TestPINNConfigTypes:
 
     def test_ut0_accepts_callable(self):
         """ut0 accepts callable type."""
-        fn = lambda x: 1.0
+        def fn(x: jnp.ndarray) -> jnp.ndarray:
+            return jnp.asarray([1.0])
         config = PINNConfig(ut0=fn)
         assert callable(config.ut0)
 
@@ -183,13 +187,13 @@ class TestPINNConfigImmutability:
         """Frozen dataclass raises error on attribute assignment."""
         config = PINNConfig()
         with pytest.raises((AttributeError, Exception)):  # FrozenInstanceError
-            config.c = 2.0
+            config.c = 2.0 # type: ignore ; This is supposed to raise a pylance warning
 
     def test_frozen_prevents_new_attributes(self):
         """Cannot add new attributes to frozen dataclass."""
         config = PINNConfig()
         with pytest.raises((AttributeError, Exception)):
-            config.new_field = "value"
+            config.new_field = "value" # type: ignore ; This is supposed to raise a pylance warning
 
 
 class TestPINNConfigMultipleArgs:
@@ -197,14 +201,14 @@ class TestPINNConfigMultipleArgs:
 
     def test_all_fields_specified(self):
         """Can specify all fields in PINNConfig."""
-        def c_fn(x):
-            return 1.0
-        def f_fn(x):
-            return 0.0
-        def u0_fn(x):
-            return 0.0
-        def ut0_fn(x):
-            return 0.0
+        def c_fn(x: jnp.ndarray) -> jnp.ndarray:
+            return jnp.asarray([1.0])
+        def f_fn(x: jnp.ndarray) -> jnp.ndarray:
+            return jnp.asarray([0.0])
+        def u0_fn(x: jnp.ndarray) -> jnp.ndarray:
+            return jnp.asarray([0.0])
+        def ut0_fn(x: jnp.ndarray) -> jnp.ndarray:
+            return jnp.asarray([0.0])
 
         config = PINNConfig(
             c=c_fn,
@@ -224,7 +228,7 @@ class TestPINNConfigMultipleArgs:
 
     def test_mixed_scalar_and_callable(self):
         """Can mix scalar wave speed with callable ICs."""
-        def u0_fn(x):
+        def u0_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.sin(jnp.sum(x))
 
         config = PINNConfig(c=1.5, u0=u0_fn)
@@ -233,9 +237,9 @@ class TestPINNConfigMultipleArgs:
 
     def test_callable_wave_speed_with_forcing(self):
         """Can use callable wave speed with forcing term."""
-        def c_fn(x):
+        def c_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.sqrt(1.0 + jnp.sum(x**2))
-        def f_fn(x):
+        def f_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.sin(x[0])
 
         config = PINNConfig(c=c_fn, f=f_fn)
@@ -273,38 +277,38 @@ class TestPINNConfigWithMultipleDimensions:
 
     def test_1d_spatial_callable_works(self):
         """Callables work with 1D spatial + time (2D total)."""
-        def u0_fn(x):
+        def u0_fn(x: jnp.ndarray) -> jnp.ndarray:
             # x has shape (2,): [t, x_spatial]
             return jnp.sin(x[1])
 
         config = PINNConfig(u0=u0_fn)
         # Test evaluation
         test_x = jnp.array([0.5, 0.5])
-        result = config.u0(test_x)
+        result = config.u0(test_x) if callable(config.u0) else None
         assert isinstance(result, jnp.ndarray)
 
     def test_2d_spatial_callable_works(self):
         """Callables work with 2D spatial + time (3D total)."""
-        def u0_fn(x):
+        def u0_fn(x: jnp.ndarray) -> jnp.ndarray:
             # x has shape (3,): [t, x, y]
             return jnp.sin(x[1] * x[2])
 
         config = PINNConfig(u0=u0_fn)
         # Test evaluation
         test_x = jnp.array([0.5, 0.5, 0.5])
-        result = config.u0(test_x)
+        result = config.u0(test_x) if callable(config.u0) else None
         assert isinstance(result, jnp.ndarray)
 
     def test_3d_spatial_callable_works(self):
         """Callables work with 3D spatial + time (4D total)."""
-        def u0_fn(x):
+        def u0_fn(x: jnp.ndarray) -> jnp.ndarray:
             # x has shape (4,): [t, x, y, z]
             return jnp.sum(x[1:] ** 2)
 
         config = PINNConfig(u0=u0_fn)
         # Test evaluation
         test_x = jnp.array([0.5, 0.5, 0.5, 0.5])
-        result = config.u0(test_x)
+        result = config.u0(test_x) if callable(config.u0) else None
         assert isinstance(result, jnp.ndarray)
 
 
@@ -313,36 +317,36 @@ class TestPINNConfigCallableReturnTypes:
 
     def test_c_callable_returns_scalar(self):
         """c callable should return scalar."""
-        def c_fn(x):
-            return 1.5
+        def c_fn(x: jnp.ndarray) -> jnp.ndarray:
+            return jnp.asarray([1.5])
 
         config = PINNConfig(c=c_fn)
-        result = config.c(jnp.array([0.5, 0.5]))
+        result = config.c(jnp.array([0.5, 0.5])) if callable(config.c) else None
         assert isinstance(result, (float, jnp.ndarray))
 
     def test_f_callable_returns_scalar(self):
         """f callable should return scalar."""
-        def f_fn(x):
+        def f_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.sum(x)
 
         config = PINNConfig(f=f_fn)
-        result = config.f(jnp.array([0.5, 0.5]))
+        result = config.f(jnp.array([0.5, 0.5])) if callable(config.f) else None
         assert isinstance(result, jnp.ndarray)
 
     def test_u0_callable_returns_scalar(self):
         """u0 callable should return scalar."""
-        def u0_fn(x):
+        def u0_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.sin(jnp.sum(x))
 
         config = PINNConfig(u0=u0_fn)
-        result = config.u0(jnp.array([0.5, 0.5]))
+        result = config.u0(jnp.array([0.5, 0.5])) if callable(config.u0) else None
         assert isinstance(result, jnp.ndarray)
 
     def test_ut0_callable_returns_scalar(self):
         """ut0 callable should return scalar."""
-        def ut0_fn(x):
+        def ut0_fn(x: jnp.ndarray) -> jnp.ndarray:
             return jnp.cos(x[0])
 
         config = PINNConfig(ut0=ut0_fn)
-        result = config.ut0(jnp.array([0.5, 0.5]))
+        result = config.ut0(jnp.array([0.5, 0.5])) if callable(config.ut0) else None
         assert isinstance(result, jnp.ndarray)

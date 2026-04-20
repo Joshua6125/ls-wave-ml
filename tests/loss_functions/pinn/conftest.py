@@ -7,6 +7,8 @@ import pytest
 import jax
 import jax.numpy as jnp
 
+from typing import Any
+
 
 # ============================================================================
 # MOCK NEURAL NETWORK MODELS
@@ -19,11 +21,11 @@ class MockModel:
         """Initialize with computation function."""
         self.compute_fn = compute_fn
 
-    def init(self, rng_key, x):
+    def init(self, rng_key: jax.Array, sample_input: jnp.ndarray) -> Any:
         """Initialize parameters."""
         return {"dummy": 0}  # No learnable params
 
-    def apply(self, params, x):
+    def apply(self, params: Any, x: jnp.ndarray) -> dict[str, jnp.ndarray]:
         """Apply model to input."""
         return {"u": self.compute_fn(x)}
 
@@ -46,10 +48,10 @@ def make_mock_trig_model():
 class MockModelInvalid:
     """Mock model with invalid output (no 'u' key)."""
 
-    def init(self, rng_key, x):
+    def init(self, rng_key: jax.Array, sample_input: jnp.ndarray) -> Any:
         return {"dummy": 0}
 
-    def apply(self, params, x):
+    def apply(self, params: Any, x: jnp.ndarray) -> dict[str, jnp.ndarray]:
         return {"v": jnp.sum(x)}  # Wrong key
 
 
@@ -61,16 +63,50 @@ def make_mock_invalid_model():
 class MockModelInvalidShape:
     """Mock model with invalid output shape (not scalar)."""
 
-    def init(self, rng_key, x):
+    def init(self, rng_key: jax.Array, sample_input: jnp.ndarray) -> Any:
         return {"dummy": 0}
 
-    def apply(self, params, x):
-        return {"u": jnp.array([jnp.sum(x), jnp.sum(x)])}  # Shape (2,)
+    def apply(self, params: Any, x: jnp.ndarray) -> dict[str, jnp.ndarray]:
+        return {"u": jnp.array([jnp.sum(x), jnp.sum(x)])}
 
 
 def make_mock_invalid_output_shape_model():
     """Mock model with invalid output shape (not scalar)."""
     return MockModelInvalidShape()
+
+
+# ============================================================================
+# MOCK MODEL FIXTURES (Parameterized)
+# ============================================================================
+
+@pytest.fixture
+def mock_model_linear():
+    """Mock linear model: u(x) = sum(x)."""
+    return make_mock_linear_model()
+
+
+@pytest.fixture
+def mock_model_quadratic():
+    """Mock quadratic model: u(x) = sum(x^2)."""
+    return make_mock_quadratic_model()
+
+
+@pytest.fixture
+def mock_model_trig():
+    """Mock trig model: u(x) = sin(sum(x))."""
+    return make_mock_trig_model()
+
+
+@pytest.fixture
+def mock_model_invalid():
+    """Mock model with invalid output dict."""
+    return make_mock_invalid_model()
+
+
+@pytest.fixture
+def mock_model_invalid_shape():
+    """Mock model with invalid output shape."""
+    return make_mock_invalid_output_shape_model()
 
 
 # ============================================================================
@@ -153,40 +189,6 @@ def callable_ut0_constant():
 def callable_ut0_linear():
     """Initial velocity: ut0(x) = sum(x)."""
     return lambda x: jnp.sum(x)
-
-
-# ============================================================================
-# MOCK MODEL FIXTURES (Parameterized)
-# ============================================================================
-
-@pytest.fixture
-def mock_model_linear():
-    """Mock linear model: u(x) = sum(x)."""
-    return make_mock_linear_model()
-
-
-@pytest.fixture
-def mock_model_quadratic():
-    """Mock quadratic model: u(x) = sum(x^2)."""
-    return make_mock_quadratic_model()
-
-
-@pytest.fixture
-def mock_model_trig():
-    """Mock trig model: u(x) = sin(sum(x))."""
-    return make_mock_trig_model()
-
-
-@pytest.fixture
-def mock_model_invalid():
-    """Mock model with invalid output dict."""
-    return make_mock_invalid_model()
-
-
-@pytest.fixture
-def mock_model_invalid_shape():
-    """Mock model with invalid output shape."""
-    return make_mock_invalid_output_shape_model()
 
 
 # ============================================================================
@@ -279,20 +281,20 @@ def boundary_bc_points_2d():
 @pytest.fixture
 def pinn_config_default():
     """Default PINNConfig with minimal args."""
-    from src.algorithms import PINNConfig
+    from src.loss_functions import PINNConfig
     return PINNConfig()
 
 
 @pytest.fixture
 def pinn_config_with_ic():
     """PINNConfig with IC conditions and scalar wave speed."""
-    from src.algorithms import PINNConfig
+    from src.loss_functions import PINNConfig
 
-    def u0(x):
+    def u0(x: jnp.ndarray) -> jnp.ndarray:
         return jnp.sin(jnp.sum(x[1:]))  # spatial dims
 
-    def ut0(x):
-        return 0.0
+    def ut0(x: jnp.ndarray) -> jnp.ndarray:
+        return jnp.asarray([0.0])
 
     return PINNConfig(c=1.0, u0=u0, ut0=ut0, ic_weight=1.0, bc_weight=1.0)
 
@@ -300,9 +302,9 @@ def pinn_config_with_ic():
 @pytest.fixture
 def pinn_config_with_forcing():
     """PINNConfig with forcing term."""
-    from src.algorithms import PINNConfig
+    from src.loss_functions import PINNConfig
 
-    def f(x):
+    def f(x: jnp.ndarray) -> jnp.ndarray:
         return jnp.sin(jnp.sum(x))
 
     return PINNConfig(c=1.0, f=f)
@@ -311,7 +313,7 @@ def pinn_config_with_forcing():
 @pytest.fixture
 def pinn_config_variable_c():
     """PINNConfig with variable wave speed."""
-    from src.algorithms import PINNConfig
+    from src.loss_functions import PINNConfig
 
     def c(x):
         return 0.5 + 0.1 * jnp.sum(x**2)
@@ -322,7 +324,7 @@ def pinn_config_variable_c():
 @pytest.fixture
 def pinn_config_weighted():
     """PINNConfig with non-default weights."""
-    from src.algorithms import PINNConfig
+    from src.loss_functions import PINNConfig
     return PINNConfig(ic_weight=2.0, bc_weight=0.5)
 
 
