@@ -129,13 +129,13 @@ class TestBuildModel:
         """NeuralNetModelConfig dispatches to NeuralNet."""
         cfg = NeuralNetModelConfig(hidden_dim=16, num_layers=2, output_heads={"u": 1})
         model = build_model(cfg)
-        assert isinstance(model, NeuralNet)
+        assert isinstance(model._module, NeuralNet)
 
     def test_build_model_returns_kan_for_kan_config(self):
         """KANModelConfig dispatches to KANModel."""
         cfg = KANModelConfig(hidden_dim=16, num_layers=2, output_heads={"u": 1})
         model = build_model(cfg)
-        assert isinstance(model, KANModel)
+        assert isinstance(model._module, KANModel)
 
     def test_build_model_validates_config_before_building(self):
         """Invalid config fields raise via validate during build_model."""

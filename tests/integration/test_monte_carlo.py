@@ -287,16 +287,18 @@ def test_monte_carlo_resamples(config_monte_carlo_1d):
     key0 = jr.PRNGKey(0)
 
     integrator_a = MonteCarloIntegration(config_monte_carlo_1d)
-    _, interior_1a, _, key1a = integrator_a.integrate_with_key(interior_func, boundary_func, key0)
-    _, interior_2a, _, _ = integrator_a.integrate_with_key(interior_func, boundary_func, key1a)
+    _, interior_1a, _ = integrator_a.integrate(interior_func, boundary_func, key0)
+    key1a, _ = jr.split(key0)
+    _, interior_2a, _ = integrator_a.integrate(interior_func, boundary_func, key1a)
 
     # New key should produce a new sample set and therefore a different estimate.
     assert not jnp.allclose(interior_1a, interior_2a)
 
     # Replaying the same key sequence reproduces the same estimates exactly.
     integrator_b = MonteCarloIntegration(config_monte_carlo_1d)
-    _, interior_1b, _, key1b = integrator_b.integrate_with_key(interior_func, boundary_func, key0)
-    _, interior_2b, _, _ = integrator_b.integrate_with_key(interior_func, boundary_func, key1b)
+    _, interior_1b, _ = integrator_b.integrate(interior_func, boundary_func, key0)
+    key1b, _ = jr.split(key0)
+    _, interior_2b, _ = integrator_b.integrate(interior_func, boundary_func, key1b)
 
     assert jnp.allclose(interior_1a, interior_1b)
     assert jnp.allclose(interior_2a, interior_2b)
