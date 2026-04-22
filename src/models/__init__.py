@@ -1,7 +1,7 @@
 from .neuralnet import NeuralNet
 from .kan import KANModel
 from .builder import (
-    AnyBuiltModel,
+    BuiltModelAdapter,
     BuiltModelProtocol,
     AnyModelConfig,
     NeuralNetModelConfig,
@@ -15,7 +15,7 @@ __all__ = [
     "NeuralNetModelConfig",
     "KANModelConfig",
     "AnyModelConfig",
-    "AnyBuiltModel",
     "BuiltModelProtocol",
+    "BuiltModelAdapter",
     "build_model",
 ]

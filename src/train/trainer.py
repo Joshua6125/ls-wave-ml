@@ -13,7 +13,7 @@ from .state import TrainConfig, TrainState
 
 @dataclass(frozen=True)
 class TrainStepMetrics:
-    """Metrics tracked at each optimization step."""
+    """Metrics tracked at each optimisation step."""
 
     step: int
     total_loss: float
@@ -65,11 +65,13 @@ class Trainer:
             integration_key: jax.Array,
         ) -> tuple[jnp.ndarray, tuple[jnp.ndarray, jnp.ndarray, jax.Array]]:
         interior_fn, boundary_fn = self.method.loss_functions(params)
-        total, interior, boundary, next_key = self.integrator.integrate_with_key(
+        total, interior, boundary = self.integrator.integrate(
             interior_fn,
             boundary_fn,
             integration_key,
         )
+        next_key, _ = jr.split(integration_key)
+
         return total, (interior, boundary, next_key)
 
     def _train_step_impl(
@@ -95,7 +97,7 @@ class Trainer:
         )
 
     def train_step(self, state: TrainState) -> tuple[TrainState, TrainStepMetrics]:
-        """Run one optimization step and return updated state and metrics."""
+        """Run one optimisation step and return updated state and metrics."""
         params, opt_state, total_loss, interior_loss, boundary_loss, integration_key = self._train_step_fn(
             state.params,
             state.opt_state,

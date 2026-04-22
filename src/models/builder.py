@@ -1,20 +1,35 @@
 from dataclasses import dataclass, field
-from typing import Literal, TypeAlias, Mapping, Protocol, Any
+from typing import Literal, TypeAlias, Mapping, Protocol, Any, cast
 
 from .neuralnet import NeuralNet
 from .kan import KANModel
 
 import jax
 import jax.numpy as jnp
+import flax.linen as nn
 
 
-AnyBuiltModel: TypeAlias = NeuralNet | KANModel
+# AnyBuiltModel: TypeAlias = NeuralNet | KANModel
 
 
 # TODO: Potentially add @runtime_checkable here.
 class BuiltModelProtocol(Protocol):
     def init(self, rng_key: jax.Array, sample_input: jnp.ndarray) -> Any: ...
     def apply(self, params: Any, x: jnp.ndarray) -> dict[str, jnp.ndarray]: ...
+
+
+class BuiltModelAdapter:
+    def __init__(self, module: nn.Module):
+        self._module = module
+
+    def init(self, rng_key: jax.Array, sample_input: jnp.ndarray) -> Any:
+        return self._module.init(rng_key, sample_input)
+
+    def apply(self, params: Any, x: jnp.ndarray) -> dict[str, jnp.ndarray]:
+        out = self._module.apply(params, x)
+        if not isinstance(out, dict):
+            raise TypeError("Model.apply must return a dict[str, ndarray] for training.")
+        return cast(dict[str, jnp.ndarray], out)
 
 
 @dataclass(frozen=True)
@@ -67,26 +82,30 @@ class KANModelConfig(BaseModelConfig):
 AnyModelConfig: TypeAlias = NeuralNetModelConfig | KANModelConfig
 
 
-def build_model(cfg: AnyModelConfig) -> AnyBuiltModel:
+def build_model(cfg: AnyModelConfig) -> BuiltModelAdapter:
     """Build model from declarative model config."""
     if isinstance(cfg, NeuralNetModelConfig):
         cfg.validate()
-        return NeuralNet(
-            hidden_dim=cfg.hidden_dim,
-            num_layers=cfg.num_layers,
-            output_heads=cfg.output_heads,
+        return BuiltModelAdapter(
+            NeuralNet(
+                hidden_dim=cfg.hidden_dim,
+                num_layers=cfg.num_layers,
+                output_heads=cfg.output_heads,
+            )
         )
 
     if isinstance(cfg, KANModelConfig):
         cfg.validate()
-        return KANModel(
-            hidden_dim=cfg.hidden_dim,
-            num_layers=cfg.num_layers,
-            output_heads=cfg.output_heads,
-            grid_size=cfg.grid_size,
-            degree=cfg.degree,
-            model_type=cfg.model_type,
-            seed=cfg.seed
+        return BuiltModelAdapter(
+            KANModel(
+                hidden_dim=cfg.hidden_dim,
+                num_layers=cfg.num_layers,
+                output_heads=cfg.output_heads,
+                grid_size=cfg.grid_size,
+                degree=cfg.degree,
+                model_type=cfg.model_type,
+                seed=cfg.seed
+            )
         )
 
     raise ValueError("Unknown model config type.")
