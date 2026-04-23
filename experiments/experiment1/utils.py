@@ -164,14 +164,14 @@ def plot_solution_comparison(
         x_vals = t_space[x_sorted_idx, 1]
         u_e_sorted = u_e[x_sorted_idx]
 
-        axes[row].plot(x_vals, u_e_sorted, label="Exact", linewidth=2)
+        # axes[row].plot(x_vals, u_e_sorted, label="Exact", linewidth=2)
 
         for method_name, prediction in predictions_by_method.items():
             u_method = prediction[time_mask]
             u_method_sorted = u_method[x_sorted_idx]
             axes[row].plot(
                 x_vals,
-                u_method_sorted,
+                np.abs(u_e_sorted - u_method_sorted),
                 label=f"{method_name}",
                 linestyle="--",
                 linewidth=2,
@@ -185,7 +185,7 @@ def plot_solution_comparison(
 
     axes[-1].set_xlabel("x", fontsize=11)
 
-    fig.suptitle("1D Solution Snapshots: PINN/LS vs Reference", fontsize=14)
+    fig.suptitle("1D Solution Error Snapshots", fontsize=14)
     plt.tight_layout()
 
     os.makedirs(os.path.dirname(output_path), exist_ok=True)

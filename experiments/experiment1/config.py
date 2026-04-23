@@ -211,12 +211,12 @@ def get_integration_config(
 
 def get_training_config() -> TrainConfig:
     return TrainConfig(
-        epochs=100,
-        learning_rate=3e-4,
+        epochs=100000,
+        learning_rate=1e-4,
         optimiser="adamw",
         use_jit=True,
         seed=42,
-        log_every=10,
+        log_every=50,
     )
 
 
