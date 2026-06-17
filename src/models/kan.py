@@ -18,10 +18,12 @@ class KAN(nn.Module):
     num_layers: int
     output_heads: Mapping[str, int]
     input_dim: int
-    constrained: bool
-    grid_size: int = 5 # Used in "original", "base", and "spline"
-    degree: int = 3 #
-    model_type: str = "efficient"  # aliases: "efficient" | "cheby" | "chebychev" | "original" | "base" | "spline"
+    constrained_heads: list[str]
+    grid_size: int = 5  # Used in "original", "base", and "spline"
+    degree: int = 3  # Degree of chebychev polynomials.
+    model_type: str = (
+        "efficient"  # aliases: "efficient" | "cheby" | "chebychev" | "original" | "base" | "spline"
+    )
     seed: int = 42
 
     def validate(self) -> None:
@@ -38,6 +40,14 @@ class KAN(nn.Module):
                 raise ValueError("each output head dimension must be strictly positive")
         if self.input_dim <= 0:
             raise ValueError("input_dim must be strictly positive")
+
+        # Validate model-specific parameters
+        if self.model_type in ["efficient", "cheby", "chebychev"]:
+            if self.degree < 0:
+                raise ValueError("Degree of Chebychev polynomials must be non-negative")
+        if self.model_type in ["original", "base", "spline"]:
+            if self.grid_size <= 0:
+                raise ValueError("Grid size of spline-based KAN must be positive")
 
     def _layer_dims(self) -> list[int]:
         total_out_dim = sum(dim for _, dim in sorted(self.output_heads.items()))
@@ -67,8 +77,9 @@ class KAN(nn.Module):
 
         outputs = self._split_output_heads(y)
 
+        # If specified, then multiply with a smooth function that is zero on the spatial boundary.
         for head in outputs.keys():
-            if head in ["u", "v"]: # TODO: Got meself some major tech debt for now, lol
+            if head in self.constrained_heads:
                 p = 2.0
                 eps = 1e-12
                 spatial_coords = x[..., 1:]
@@ -76,7 +87,9 @@ class KAN(nn.Module):
                 a_left = jnp.clip(spatial_coords, eps, 1.0)
                 a_right = jnp.clip(1.0 - spatial_coords, eps, 1.0)
 
-                boundary_func = jnp.sum(a_left ** (-p) + a_right ** (-p), axis=-1, keepdims=True) ** (-1.0 / p)
+                boundary_func = jnp.sum(
+                    a_left ** (-p) + a_right ** (-p), axis=-1, keepdims=True
+                ) ** (-1.0 / p)
 
                 outputs[head] = boundary_func * outputs[head]
 
@@ -84,7 +97,6 @@ class KAN(nn.Module):
             return {name: value[0] for name, value in outputs.items()}
 
         return outputs
-
 
     def _split_output_heads(self, y: jnp.ndarray) -> dict[str, jnp.ndarray]:
         outputs: dict[str, jnp.ndarray] = {}
