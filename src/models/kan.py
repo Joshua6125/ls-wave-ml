@@ -9,9 +9,26 @@ from jaxkan.models.KAN import KAN as nnxKAN
 class KAN(nn.Module):
     """Linen-compatible wrapper around jaxKAN's NNX KAN model.
 
-    The public behaviour matches ``MLP``:
-    - ``model.init(key, x)`` returns Linen variables
-    - ``model.apply(variables, x)`` returns ``dict[str, jnp.ndarray]``
+    Parameters
+    ----------
+    hidden_dim : int
+        Width of each hidden layer.
+    num_layers : int
+        Number of hidden layers.
+    output_heads : Mapping[str, int]
+        Named output heads.
+    input_dim : int
+        Dimension of the input layer.
+    constrained_heads: list[str]
+        The heads to ensure are smooth and zero on the spatial boundary.
+    grid_size : int
+        Grid size for spline-based KAN networks
+    degree : int
+        Degree of Chebyshev polynomials in Chebyshev-KAN
+    model_type : str
+        Specifies the type of model: "efficient" | "cheby" | "chebyshev" | "original" | "base" | "spline".
+    seed : int
+        The random seed used for KAN initialisation.
     """
 
     hidden_dim: int
@@ -20,34 +37,11 @@ class KAN(nn.Module):
     input_dim: int
     constrained_heads: list[str]
     grid_size: int = 5  # Used in "original", "base", and "spline"
-    degree: int = 3  # Degree of chebychev polynomials.
+    degree: int = 3  # Degree of chebyshev polynomials.
     model_type: str = (
-        "efficient"  # aliases: "efficient" | "cheby" | "chebychev" | "original" | "base" | "spline"
+        "efficient"  # aliases: "efficient" | "cheby" | "chebyshev" | "original" | "base" | "spline"
     )
     seed: int = 42
-
-    def validate(self) -> None:
-        if self.hidden_dim <= 0:
-            raise ValueError("hidden_dim must be strictly positive")
-        if self.num_layers <= 0:
-            raise ValueError("num_layers must be strictly positive")
-        if len(self.output_heads) == 0:
-            raise ValueError("output_heads must be non-empty")
-        for name, dim in self.output_heads.items():
-            if not name:
-                raise ValueError("output head names must be non-empty")
-            if dim <= 0:
-                raise ValueError("each output head dimension must be strictly positive")
-        if self.input_dim <= 0:
-            raise ValueError("input_dim must be strictly positive")
-
-        # Validate model-specific parameters
-        if self.model_type in ["efficient", "cheby", "chebychev"]:
-            if self.degree < 0:
-                raise ValueError("Degree of Chebychev polynomials must be non-negative")
-        if self.model_type in ["original", "base", "spline"]:
-            if self.grid_size <= 0:
-                raise ValueError("Grid size of spline-based KAN must be positive")
 
     def _layer_dims(self) -> list[int]:
         total_out_dim = sum(dim for _, dim in sorted(self.output_heads.items()))

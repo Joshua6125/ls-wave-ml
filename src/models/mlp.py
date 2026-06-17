@@ -15,12 +15,14 @@ class MLP(nn.Module):
         Number of hidden layers.
     output_heads : Mapping[str, int]
         Named output heads.
+    constrained_heads: list[str]
+        The heads to ensure are smooth and zero on the spatial boundary.
     """
 
     hidden_dim: int
     num_layers: int
     output_heads: Mapping[str, int]
-    constrained: bool
+    constrained_heads: list[str]
 
     @nn.compact
     def __call__(self, x) -> dict[str, jnp.ndarray]:
@@ -33,8 +35,9 @@ class MLP(nn.Module):
             for name, dim in sorted(self.output_heads.items())
         }
 
+        # If specified, then multiply with a smooth function that is zero on the spatial boundary.
         for head in output.keys():
-            if self.constrained and head in ["u", "v"]: # TODO: More tech debt here.
+            if head in self.constrained_heads:
                 p = 2.0
                 eps = 1e-12
                 spatial_coords = x[..., 1:]
