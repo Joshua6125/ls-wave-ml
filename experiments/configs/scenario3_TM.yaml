@@ -53,8 +53,8 @@ callback_integration:
 
 combinations: [
   # Should be [method, model]
-  # ["fosls", "mlp"],
-  # ["fosls", "kan"],
+  ["fosls", "mlp"],
+  ["fosls", "kan"],
   ["fosls", "mlp_V0"],
   ["fosls", "kan_V0"]
 ]
