@@ -1,5 +1,3 @@
-"""Least-Squares loss function."""
-
 from typing import Callable
 
 import jax
@@ -9,26 +7,13 @@ from ..base import Loss
 
 
 class FOSLSLoss(Loss):
-    """Least-squares loss for the first-order acoustic wave system.
+    """
+    First-Order System Least Squares (FOSLS) loss for the acoustic wave system.
 
-    Points x have shape [d+1] with x[0] = t (time) and x[1:] spatial.
+    The method rewrites the wave equation as a first-order system
+    and minimises the L2 norm of the residuals over space-time.
 
-    Parameters
-    ----------
-    v_model : Callable
-        Network v(x) -> scalar.
-    sigma_model : Callable
-        Network sigma(x) -> [d].
-    f : Callable or None
-        Source term for v equation.
-    g : Callable or None
-        Source term for sigma equation.
-    v0 : Callable or None
-        Initial condition v(0,-) = v0.
-    sigma0 : Callable or None
-        Initial condition sigma(0,-) = sigma0.
-    ic_weight : float
-        Initial condition weight, exact same as SLS for weight = 1.0
+    Initial conditions can be enforced via a separate weighted penalty.
     """
 
     def __init__(
@@ -38,99 +23,102 @@ class FOSLSLoss(Loss):
         g: float | Callable[[jnp.ndarray], jnp.ndarray] = 0.0,
         v0: float | Callable[[jnp.ndarray], jnp.ndarray] = 0.0,
         sigma0: float | Callable[[jnp.ndarray], jnp.ndarray] = 0.0,
-        v_boundary: float | Callable[[jnp.ndarray], jnp.ndarray] = 0.0,
         ic_weight: float = 1.0,
     ):
         self.model = model
-        self.f = f
-        self.g = g
-        self.v0 = v0
-        self.sigma0 = sigma0
-        self.v_boundary = v_boundary
-        if not self.v_boundary == 0.0:
-            print("WARNING: SLS formulation is only proven for Dirichlet boundary conditions")
         self.ic_weight = ic_weight
 
+        # Allow constant or spatially varying coefficients.
         self._f_fn = f if callable(f) else self._constant_function(f)
         self._g_fn = g if callable(g) else self._constant_function(g)
         self._v0_fn = v0 if callable(v0) else self._constant_function(v0)
-        self._sigma0_fn = sigma0 if callable(sigma0) else self._constant_function(sigma0)
-        self._v_boundary_fn = (
-            v_boundary if callable(v_boundary) else self._constant_function(v_boundary)
-        ) if v_boundary is not None else None
+        self._sigma0_fn = (
+            sigma0 if callable(sigma0) else self._constant_function(sigma0)
+        )
 
+        # Vectorized residual evaluation over batches of points.
         self._vmapped_interior_residual = jax.vmap(self._interior_residual)
         self._vmapped_ic_residual = jax.vmap(self._ic_residual)
-        self._vmapped_spatial_bc_residual = jax.vmap(self._spatial_bc_residual)
 
     def _interior_residual(self, x: jnp.ndarray) -> jnp.ndarray:
-        """Sum of squared residuals of both equations."""
+        """
+        Pointwise squared residual of the first-order PDE system.
+        """
         jac = jax.jacobian(self.model)(x)
 
+        # Time derivative of scalar field v.
         dt_v = jac[0, 0]
+
+        # Spatial gradient of v.
         grad_v = jac[0, 1:]
+
+        # Time derivative of vector field σ.
         dt_sigma = jac[1:, 0]
 
-        jac_sigma_spatial = jac[1:, 1:]
-        div_sigma = jnp.trace(jac_sigma_spatial)
+        # Divergence of σ via trace of spatial Jacobian.
+        div_sigma = jnp.trace(jac[1:, 1:])
 
         f = self._f_fn(x)
         if jnp.ndim(f) != 0:
-            raise ValueError("f should be scalar or return scalar type.")
+            raise ValueError("f must be scalar-valued.")
 
         g = self._g_fn(x)
+
+        # Allow isotropic forcing if scalar is provided.
         if jnp.ndim(g) == 0:
             g = g * jnp.ones_like(grad_v)
-        if not jnp.shape(g) == jnp.shape(grad_v):
-            raise ValueError("g should be or return the right shape.")
+
+        if jnp.shape(g) != jnp.shape(grad_v):
+            raise ValueError("g must match shape of spatial gradient.")
 
         res_v = dt_v - div_sigma - f
         res_sigma = dt_sigma - grad_v - g
 
-        return res_v ** 2 + jnp.sum(res_sigma ** 2)
+        return res_v**2 + jnp.sum(res_sigma**2)
 
     def loss_interior(self, x_interior: jnp.ndarray) -> jnp.ndarray:
-        """Interior residuals."""
+        """Batch interior residual evaluation."""
         return self._vmapped_interior_residual(x_interior)
 
     def _ic_residual(self, x: jnp.ndarray) -> jnp.ndarray:
-        """IC residuals at t=t_min."""
+        """
+        Pointwise initial condition penalty at t = t_min.
+        """
         out = self.model(x)
         v_val = out[0]
         sigma_val = out[1:]
 
         v0_val = self._v0_fn(x)
         if jnp.ndim(v0_val) != 0:
-            raise ValueError("v0 should be scalar or return scalar type.")
+            raise ValueError("v0 must be scalar-valued.")
 
         sigma0_val = self._sigma0_fn(x)
+
+        # Allow scalar IC to be broadcast to vector field.
         if jnp.ndim(sigma0_val) == 0:
             sigma0_val = sigma0_val * jnp.ones_like(sigma_val)
-        if not jnp.shape(sigma0_val) == jnp.shape(sigma_val):
-            raise ValueError("sigma0 should be or return the right shape.")
 
-        return self.ic_weight * ((v_val - v0_val) ** 2 + jnp.sum((sigma_val - sigma0_val) ** 2))
+        if jnp.shape(sigma0_val) != jnp.shape(sigma_val):
+            raise ValueError("sigma0 must match sigma shape.")
 
-    def _spatial_bc_residual(self, x: jnp.ndarray) -> jnp.ndarray:
-        """Spatial boundary residual for the velocity field."""
-        if self.v_boundary is None:
-            return jnp.zeros(())
+        return self.ic_weight * (
+            (v_val - v0_val) ** 2 + jnp.sum((sigma_val - sigma0_val) ** 2)
+        )
 
-        out = self.model(x)
-        v_val = out[0]
-        v_boundary_val = self._v_boundary_fn(x) if self._v_boundary_fn is not None else 0.0
-        if jnp.ndim(v_boundary_val) != 0:
-            raise ValueError("v_boundary should be scalar or return scalar type.")
+    def loss_boundary(
+        self,
+        x_boundary: jnp.ndarray,
+        normal_vector: jnp.ndarray,
+    ) -> jnp.ndarray:
+        """
+        Boundary contribution to the loss.
 
-        return (v_val - v_boundary_val) ** 2
-
-    def loss_boundary(self, x_boundary: jnp.ndarray, normal_vector: jnp.ndarray) -> jnp.ndarray:
-        """IC loss at t=t_min and optional spatial Dirichlet loss for v."""
+        Only the initial time boundary is penalised in this formulation.
+        """
         is_ic = normal_vector[:, 0] < 0
-        is_spatial_bc = normal_vector[:, 0] == 0
 
         return jnp.where(
             is_ic,
             self._vmapped_ic_residual(x_boundary),
-            jnp.where(is_spatial_bc, self._vmapped_spatial_bc_residual(x_boundary), 0.0),
+            0.0,
         )

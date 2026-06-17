@@ -1,5 +1,3 @@
-"""Training execution interface."""
-
 from typing import Callable
 
 import jax.numpy as jnp

@@ -15,11 +15,23 @@ class PINNConfig(AlgorithmConfig):
 
     Combines model architecture and PDE parameters into a single configuration.
     """
+
     kind: Literal["pinn"] = "pinn"
+
+    # Neural network model used to represent unknown fields.
     model: AnyModelConfig = field(default_factory=MLPConfig)
-    c: float | Callable[[jnp.ndarray], jnp.ndarray] = 1.0
+
+    # Source term in the PDE system.
     f: float | Callable[[jnp.ndarray], jnp.ndarray] = 0.0
+
+    # Initial displacement
     u0: float | Callable[[jnp.ndarray], jnp.ndarray] = 0.0
+
+    # Initial velocity
     ut0: float | Callable[[jnp.ndarray], jnp.ndarray] = 0.0
+
+    # Weight of the initial condition loss term.
     ic_weight: float = 1.0
+
+    # Weight of the boundary condition loss term.
     bc_weight: float = 1.0

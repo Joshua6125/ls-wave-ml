@@ -1,5 +1,3 @@
-"""Base classes for training infrastructure."""
-
 from abc import ABC, abstractmethod
 from typing import Any, Callable
 
@@ -8,70 +6,81 @@ import jax.numpy as jnp
 
 
 class TrainingMethod(ABC):
-    """Base interface for training algorithms.
+    """
+    Abstract interface for PDE training algorithms.
 
-    A training method specifies how to:
-    - Initialize model parameters
-    - Create loss functions for a given set of parameters
-    - Aggregate the loss output to a scalar value
+    A training method defines the full optimisation pipeline:
 
-    This interface is implemented by all algorithms (PINN, FOSLS, etc.)
+    1. Parameter initialisation for a given model and input shape
+    2. Construction of loss function closures for fixed parameters
+    3. Optional aggregation of structured loss outputs into a scalar objective
+
+    Concrete implementations include PINNs, FOSLS, and related variational methods.
     """
 
     @abstractmethod
-    def init_params(self, rng_key: jax.Array, sample_input: jnp.ndarray) -> Any:
-        """Initialize model parameters for this method.
+    def init_params(
+        self,
+        rng_key: jax.Array,
+        sample_input: jnp.ndarray,
+    ) -> Any:
+        """
+        Initialize model parameters and validate model compatibility.
 
-        Should validate that the model output contract matches expectations.
+        The implementation may enforce architecture-specific output contracts.
 
         Parameters
         ----------
-        rng_key : jax.Array
-            PRNG key for reproducible random initialisation
-        sample_input : jnp.ndarray
-            Sample input for determining model dimensions
+        rng_key
+            Random key for parameter initialisation.
+        sample_input
+            Example input used to infer model dimensions.
 
         Returns
         -------
         Any
-            Initialized parameters (typically a PyTree)
+            Model parameters (PyTree or backend-specific structure).
         """
         ...
 
     @abstractmethod
-    def loss_functions(self, params: Any) -> tuple[
+    def loss_functions(
+        self,
+        params: Any,
+    ) -> tuple[
         Callable[[jnp.ndarray], jnp.ndarray],
         Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray],
     ]:
-        """Return loss function callables for current parameters.
-
-        The returned tuple should contain:
-        - interior_loss: f(x_interior) -> scalar loss
-        - boundary_loss: f(x_boundary, normal_vector) -> scalar loss
-
-        Parameters
-        ----------
-        params : Any
-            Parameterised neural model.
+        """
+        Construct loss function closures for fixed parameters.
 
         Returns
         -------
-        tuple[Callable, Callable]
-            (interior_loss_fn, boundary_loss_fn)
+        interior_loss_fn
+            Maps interior points -> pointwise or integrated loss contribution.
+
+        boundary_loss_fn
+            Maps boundary points and normals -> loss contribution.
         """
         ...
 
     def aggregate_loss(self, interior: Any, boundary: Any) -> jnp.ndarray:
-        """Aggregate interior and boundary integration results into a single scalar loss.
+        """
+        Reduce structured interior and boundary losses into a scalar objective.
 
-        Default implementation assumes interior and boundary are PyTrees of scalar totals,
-        and simply sums them up. Can be overridden by specific methods (e.g. vPINN).
+        Default behaviour:
+        - Flattens PyTrees
+        - Sums all scalar-valued contributions
+
+        This can be overridden for methods requiring weighted or coupled losses.
         """
 
         def tree_sum(tree: Any) -> jnp.ndarray:
             leaves = jax.tree_util.tree_leaves(tree)
+
             if not leaves:
                 return jnp.array(0.0)
+
             return sum(jnp.sum(leaf) for leaf in leaves)  # type: ignore
 
         return tree_sum(interior) + tree_sum(boundary)
