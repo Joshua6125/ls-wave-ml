@@ -312,7 +312,8 @@ class DataProcessor:
         combinations = self.problem.cfg.get("combinations", ())
 
         plt.figure(figsize=(11, 7))
-        for name, evals in self.evals_data.items():
+        for name in sorted(self.evals_data):
+            evals = self.evals_data[name]
             model, method = name.split('-')
             if not [method, model] in combinations:
                 print(f"Not plotting {name}. Not in config.")
