@@ -17,7 +17,22 @@ from .state import TrainConfig, TrainState
 
 @dataclass(frozen=True)
 class TrainStepMetrics:
-    """Metrics tracked at each optimisation step."""
+    """
+    Metrics tracked at each optimisation step.
+
+    Parameters
+    ----------
+    step : int
+        The current epoch.
+    total_loss : float
+        A scalar value of the total loss.
+    interior_loss : float
+        A scalar value of the interior loss.
+    boundary_loss : float
+        A scalar value of the boundary loss.
+    training_time : float
+        Current total training time.
+    """
 
     step: int
     total_loss: float
@@ -27,15 +42,28 @@ class TrainStepMetrics:
 
 
 class Trainer:
-    """Generic training loop independent of method and integration choices."""
+    """
+    Generic training loop independent of method and integration choices.
+
+    Parameters
+    ----------
+    method : TrainingMethod
+        A loss method object.
+    integrator : NDCubeIntegration
+        A integrator for N dimensional hypercubes.
+    optimiser : optax.GradientTransform
+        An optimiser for flax objects.
+    train_cfg : TrainConfig
+        A config containing the training hyperparameters.
+    """
 
     def __init__(
-            self,
-            method: TrainingMethod,
-            integrator: NDCubeIntegration,
-            optimiser: optax.GradientTransformation,
-            train_cfg: TrainConfig,
-        ):
+        self,
+        method: TrainingMethod,
+        integrator: NDCubeIntegration,
+        optimiser: optax.GradientTransformation,
+        train_cfg: TrainConfig,
+    ):
         self.method = method
         self.integrator = integrator
         self.optimiser = optimiser
@@ -46,7 +74,7 @@ class Trainer:
         if self.train_cfg.use_jit:
             self._train_step_fn = jax.jit(self._train_step_impl)
 
-    def init_state(self, sample_input: jnp.ndarray) -> TrainState:
+    def _init_state(self, sample_input: jnp.ndarray) -> TrainState:
         """Initialize parameters, optimiser state, and RNG."""
         root_key = jr.PRNGKey(self.train_cfg.seed)
         root_key, init_key, derived_integration_key = jr.split(root_key, 3)
@@ -60,10 +88,10 @@ class Trainer:
         )
 
     def _loss_with_aux(
-            self,
-            params: Any,
-            integration_key: jax.Array,
-        ) -> tuple[jnp.ndarray, tuple[Any, Any, jax.Array]]:
+        self,
+        params: Any,
+        integration_key: jax.Array,
+    ) -> tuple[jnp.ndarray, tuple[Any, Any, jax.Array]]:
         interior_fn, boundary_fn = self.method.loss_functions(params)
         interior, boundary = self.integrator.integrate(
             interior_fn,
@@ -77,11 +105,11 @@ class Trainer:
         return total, (interior, boundary, next_key)
 
     def _train_step_impl(
-            self,
-            params: Any,
-            opt_state: optax.OptState,
-            integration_key: jax.Array,
-        ) -> tuple[Any, optax.OptState, jnp.ndarray, jnp.ndarray, jnp.ndarray, jax.Array]:
+        self,
+        params: Any,
+        opt_state: optax.OptState,
+        integration_key: jax.Array,
+    ) -> tuple[Any, optax.OptState, jnp.ndarray, jnp.ndarray, jnp.ndarray, jax.Array]:
         """Core train step that can be JIT-compiled."""
         fun = lambda p: self._loss_with_aux(p, integration_key)
         value, grads = jax.value_and_grad(fun, has_aux=True)(params)
@@ -105,22 +133,26 @@ class Trainer:
 
     @staticmethod
     def _invoke_callback(
-            callback: Callable[..., None],
-            metrics: TrainStepMetrics,
-            previous_state: TrainState,
-        ) -> None:
+        callback: Callable[..., None],
+        metrics: TrainStepMetrics,
+        previous_state: TrainState,
+    ) -> None:
         """Call callbacks that accept either one or two positional arguments."""
         signature = inspect.signature(callback)
         positional_params = [
             parameter
             for parameter in signature.parameters.values()
-            if parameter.kind in (
+            if parameter.kind
+            in (
                 inspect.Parameter.POSITIONAL_ONLY,
                 inspect.Parameter.POSITIONAL_OR_KEYWORD,
             )
         ]
 
-        if any(parameter.kind == inspect.Parameter.VAR_POSITIONAL for parameter in signature.parameters.values()):
+        if any(
+            parameter.kind == inspect.Parameter.VAR_POSITIONAL
+            for parameter in signature.parameters.values()
+        ):
             callback(metrics, previous_state)
         elif len(positional_params) >= 2:
             callback(metrics, previous_state)
@@ -142,15 +174,14 @@ class Trainer:
         mean_abs_loss = sum(abs(loss) for loss in losses) / len(losses)
         tolerance = self.train_cfg.convergence_rel_tol * mean_abs_loss
         max_deviation = max(abs(loss - mean_loss) for loss in losses)
-        # print(f"convergence: {max_deviation} - {tolerance}")
         return max_deviation <= tolerance
 
     def fit(
-            self,
-            sample_input: jnp.ndarray | None = None,
-            state: TrainState | None = None,
-            callback: Callable[..., None] | None = None,
-        ) -> tuple[TrainState, list[TrainStepMetrics]]:
+        self,
+        sample_input: jnp.ndarray | None = None,
+        state: TrainState | None = None,
+        callback: Callable[..., None] | None = None,
+    ) -> tuple[TrainState, list[TrainStepMetrics]]:
         """Run training for the configured number of epochs.
 
         Parameters
@@ -167,10 +198,15 @@ class Trainer:
 
         if state is None:
             assert sample_input is not None
-            state = self.init_state(sample_input)
+            state = self._init_state(sample_input)
 
-        if self.train_cfg.convergence_check and self.train_cfg.convergence_window_size <= 0:
-            raise ValueError("convergence_window_size must be positive when convergence_check is enabled")
+        if (
+            self.train_cfg.convergence_check
+            and self.train_cfg.convergence_window_size <= 0
+        ):
+            raise ValueError(
+                "Convergence_window_size must be positive when convergence_check is enabled"
+            )
 
         loss_window: deque[float] = deque(maxlen=self.train_cfg.convergence_window_size)
 
@@ -180,7 +216,14 @@ class Trainer:
             train_time_start = time.time() - state.total_training_time
 
             previous_state = state
-            params, opt_state, total_loss, interior_loss, boundary_loss, integration_key = self._train_step_fn(
+            (
+                params,
+                opt_state,
+                total_loss,
+                interior_loss,
+                boundary_loss,
+                integration_key,
+            ) = self._train_step_fn(
                 state.params,
                 state.opt_state,
                 state.integration_key,
@@ -196,7 +239,9 @@ class Trainer:
                 total_training_time=total_training_time,
             )
 
-            should_log = self.train_cfg.log_every > 0 and epoch % self.train_cfg.log_every == 0
+            should_log = (
+                self.train_cfg.log_every > 0 and epoch % self.train_cfg.log_every == 0
+            )
             if should_log:
                 metrics = TrainStepMetrics(
                     step=epoch,
@@ -206,9 +251,11 @@ class Trainer:
                     training_time=total_training_time,
                 )
 
-                print(f"Training progress: {epoch}/{self.train_cfg.epochs},",
-                        f"{total_training_time:.2f}/{self.train_cfg.max_training_time:.2f}s",
-                        f"({time.time() - start_time:.2f}s total elapsed)")
+                print(
+                    f"Training progress: {epoch}/{self.train_cfg.epochs},",
+                    f"{total_training_time:.2f}/{self.train_cfg.max_training_time:.2f}s",
+                    f"({time.time() - start_time:.2f}s total elapsed)",
+                )
 
                 history.append(metrics)
 
@@ -220,7 +267,11 @@ class Trainer:
                 if len(loss_window) > self.train_cfg.convergence_window_size:
                     loss_window.popleft()
 
-                if len(loss_window) == self.train_cfg.convergence_window_size and self._has_converged(loss_window):
+                if len(
+                    loss_window
+                ) == self.train_cfg.convergence_window_size and self._has_converged(
+                    loss_window
+                ):
                     return state, history
 
             # Stop training if max training time has been hit.

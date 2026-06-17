@@ -13,8 +13,9 @@ class TrainingMethod(ABC):
     A training method specifies how to:
     - Initialize model parameters
     - Create loss functions for a given set of parameters
+    - Aggregate the loss output to a scalar value
 
-    This interface is implemented by all algorithms (PINN, SLS, etc.)
+    This interface is implemented by all algorithms (PINN, FOSLS, etc.)
     """
 
     @abstractmethod
@@ -38,13 +39,10 @@ class TrainingMethod(ABC):
         ...
 
     @abstractmethod
-    def loss_functions(
-            self,
-            params: Any
-        ) -> tuple[
-            Callable[[jnp.ndarray], jnp.ndarray],
-            Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray]
-        ]:
+    def loss_functions(self, params: Any) -> tuple[
+        Callable[[jnp.ndarray], jnp.ndarray],
+        Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray],
+    ]:
         """Return loss function callables for current parameters.
 
         The returned tuple should contain:
@@ -54,7 +52,7 @@ class TrainingMethod(ABC):
         Parameters
         ----------
         params : Any
-            Model parameters
+            Parameterised neural model.
 
         Returns
         -------
@@ -74,6 +72,6 @@ class TrainingMethod(ABC):
             leaves = jax.tree_util.tree_leaves(tree)
             if not leaves:
                 return jnp.array(0.0)
-            return sum(jnp.sum(leaf) for leaf in leaves) # type: ignore
+            return sum(jnp.sum(leaf) for leaf in leaves)  # type: ignore
 
         return tree_sum(interior) + tree_sum(boundary)

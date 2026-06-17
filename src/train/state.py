@@ -10,10 +10,12 @@ from optax import Schedule
 class TrainConfig:
     """Configuration for model training.
 
-    Attributes
+    Parameters
     ----------
     epochs : int
         Number of optimisation steps.
+    max_training_time : float
+        Maximum training time. Excludes callback/logging time.
     learning_rate : optax.Schedule
         Optimiser learning rate.
     optimiser : str
@@ -27,36 +29,59 @@ class TrainConfig:
         Logging frequency in epochs. If 0 then no logging.
     use_jit : bool
         Enable JIT compilation for train_step.
+    convergence_check : bool
+        Should use windowed convergence check.
+    convergence_window_size : int
+        Size of the convergence window.
+    convergence_rel_tol : float
+        Relative noise tolerance for convergence check.
     """
 
     epochs: int = 1000
     max_training_time: float = 60
-    # TODO: Should consider maybe building the Schedule in src/
     learning_rate: Schedule = optax.exponential_decay(
-        init_value=1e-4,
-        transition_steps=1000,
-        decay_rate=0.95,
-        staircase=True
-    ) # NOTE: Might use optax.cosine_decay_schedule(init_value=1e-4, decay_steps=50000, alpha=0.01) instead.
+        init_value=1e-4, transition_steps=1000, decay_rate=0.95, staircase=True
+    )
     optimiser: str = "adamw"
     seed: int = 0
     log_every: int = 0
     use_jit: bool = True
     convergence_check: bool = False
     convergence_window_size: int = 100
-    # convergence_abs_tol: float = 1e-6
     convergence_rel_tol: float = 1e-3
 
     def validate(self) -> None:
-        assert self.epochs > 0, "epochs must be strictly positive"
-        # NOTE: Need to check if scheduler automatically checks if learning rate is valid.
-        # assert self.learning_rate > 0.0, "learning_rate must be strictly positive"
-        assert self.log_every >= 0, "log_every must be non-negative"
+        if self.epochs <= 0:
+            raise ValueError("epochs must be strictly positive")
+        if self.max_training_time <= 0:
+            raise ValueError("max_training_time must be strictly positive")
+        if self.log_every < 0:
+            raise ValueError("log_every must be non-negative")
+        if self.convergence_check:
+            if self.convergence_window_size <= 0:
+                raise ValueError("convergence_window_size must be strictly positive")
+            if self.convergence_rel_tol <= 0:
+                raise ValueError("convergence_rel_tol must be strictly positive")
 
 
 @dataclass(frozen=True)
 class TrainState:
-    """Mutable training values represented as an immutable dataclass."""
+    """
+    Mutable training values represented as an immutable dataclass.
+
+    Parameters
+    ----------
+    step : int
+        The current training step.
+    params : Any
+        The parameterised neural model of the current state.
+    opt_state : optax.OptState
+        The optimiser state.
+    integration_key : jax.Array
+        The random key for stochastic processes.
+    total_training_time : float
+        The current total training time.
+    """
 
     step: int
     params: Any
@@ -65,10 +90,8 @@ class TrainState:
     total_training_time: float = 0.0
 
     def apply_gradients(
-            self,
-            grads: Any,
-            optimiser: optax.GradientTransformation
-        ) -> "TrainState":
+        self, grads: Any, optimiser: optax.GradientTransformation
+    ) -> "TrainState":
         """Apply gradients and return updated state."""
         updates, opt_state = optimiser.update(grads, self.opt_state, self.params)
         params = optax.apply_updates(self.params, updates)
