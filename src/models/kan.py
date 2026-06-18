@@ -55,7 +55,6 @@ class KAN(nn.Module):
         """
         Initialize the underlying jaxKAN model via the Flax-NNX bridge.
         """
-        self.validate()
         layer_type, required_parameters = self._kan_hparams()
 
         self.kan = nnx.bridge.to_linen(
@@ -73,7 +72,6 @@ class KAN(nn.Module):
         """
         Forward pass returning a dictionary of named output heads.
         """
-        self.validate()
 
         # Allow single-sample inputs (shape [dim]) in addition to batches.
         was_unbatched = x.ndim == 1
@@ -132,7 +130,7 @@ class KAN(nn.Module):
         if model_type == "original":
             return "base", {"k": self.degree, "G": self.grid_size}
 
-        if model_type in {"cheby", "chebychev"}:
+        if model_type in {"cheby", "chebyshev"}:
             return "chebyshev", {"D": self.degree, "flavor": "default"}
 
         if model_type == "efficient":

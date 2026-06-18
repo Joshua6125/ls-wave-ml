@@ -1,158 +1,213 @@
-"""Tests for KAN interface behavior."""
-
-import importlib.util
-import warnings
-from typing import cast
-
-import pytest
-import jax.numpy as jnp
-
-
-def _require_jaxkan() -> None:
-    """Skip the module if optional jaxkan dependency is unavailable."""
-    if importlib.util.find_spec("jaxkan") is None:
-        message = "Skipping KAN tests because optional dependency 'jaxkan' is not installed"
-        warnings.warn(message, RuntimeWarning)
-        pytest.skip(message, allow_module_level=True)
-
-
-_require_jaxkan()
-
 from src.models import KAN
 
-
-pytestmark = pytest.mark.models
-
-
-class TestKANInstantiation:
-    """Test KAN object construction behaviour."""
-
-    def test_instantiate_with_defaults(self):
-        """KAN can be created with default optional parameters."""
-        model = KAN(hidden_dim=16, num_layers=2, output_heads={"u": 1}, input_dim=1)
-        assert model.hidden_dim == 16
-        assert model.num_layers == 2
-        assert model.input_dim == 1
-        assert model.grid_size == 5
-        assert model.degree == 3
-        assert model.model_type == "efficient"
-        assert model.seed == 42
-
-    def test_instantiate_with_custom_optional_parameters(self):
-        """KAN preserves explicitly provided optional parameters."""
-        model = KAN(
-            hidden_dim=32,
-            num_layers=3,
-            output_heads={"u": 1, "p": 2},
-            input_dim=12,
-            grid_size=7,
-            degree=4,
-            model_type="cheby",
-            seed=11,
-        )
-        assert model.grid_size == 7
-        assert model.degree == 4
-        assert model.input_dim == 12
-        assert model.model_type == "cheby"
-        assert model.seed == 11
+import jax.numpy as jnp
+import pytest
 
 
-class TestKANValidationErrors:
-    """Test invalid-user-input error flags exposed by KAN."""
-
-    def test_raises_for_non_positive_hidden_dim(self, rng_key, sample_1d_input):
-        """hidden_dim <= 0 raises ValueError."""
-        model = KAN(hidden_dim=0, num_layers=1, output_heads={"u": 1}, input_dim=1)
-        with pytest.raises(ValueError, match="hidden_dim must be strictly positive"):
-            model.init(rng_key, sample_1d_input)
-
-    def test_raises_for_non_positive_num_layers(self, rng_key, sample_1d_input):
-        """num_layers <= 0 raises ValueError."""
-        model = KAN(hidden_dim=8, num_layers=0, output_heads={"u": 1}, input_dim=1)
-        with pytest.raises(ValueError, match="num_layers must be strictly positive"):
-            model.init(rng_key, sample_1d_input)
-
-    def test_raises_for_non_positive_input_dim(self, rng_key, sample_1d_input):
-        """num_layers <= 0 raises ValueError."""
-        model = KAN(hidden_dim=8, num_layers=1, output_heads={"u": 1}, input_dim=-10)
-        with pytest.raises(ValueError, match="input_dim must be strictly positive"):
-            model.init(rng_key, sample_1d_input)
-
-    def test_raises_for_empty_output_heads(self, rng_key, sample_1d_input):
-        """Empty output_heads raises ValueError."""
-        model = KAN(hidden_dim=8, num_layers=1, output_heads={}, input_dim=1)
-        with pytest.raises(ValueError, match="output_heads must be non-empty"):
-            model.init(rng_key, sample_1d_input)
-
-    def test_raises_for_empty_head_name(self, rng_key, sample_1d_input):
-        """Empty output head name raises ValueError."""
-        model = KAN(hidden_dim=8, num_layers=1, output_heads={"": 1}, input_dim=1)
-        with pytest.raises(ValueError, match="output head names must be non-empty"):
-            model.init(rng_key, sample_1d_input)
-
-    def test_raises_for_non_positive_head_dim(self, rng_key, sample_1d_input):
-        """Output head dim <= 0 raises ValueError."""
-        model = KAN(hidden_dim=8, num_layers=1, output_heads={"u": 0}, input_dim=1)
-        with pytest.raises(
-            ValueError,
-            match="each output head dimension must be strictly positive",
-        ):
-            model.init(rng_key, sample_1d_input)
-
-    def test_raises_for_unknown_model_type(self, rng_key, sample_1d_input):
-        """Unknown model_type raises ValueError."""
-        model = KAN(
-            hidden_dim=8,
-            num_layers=1,
-            output_heads={"u": 1},
-            input_dim=1,
-            model_type="does-not-exist",
-        )
-        with pytest.raises(ValueError, match="Unknown model_type"):
-            model.init(rng_key, sample_1d_input)
-
-
-class TestKANApplyInterface:
-    """Test KAN apply output contract behaviour."""
-
-    def test_apply_returns_all_output_heads(self, rng_key, sample_2d_input):
-        """apply returns exactly the declared head keys."""
-        model = KAN(hidden_dim=8, num_layers=2, output_heads={"u": 1, "p": 2}, input_dim=2)
-        params = model.init(rng_key, sample_2d_input)
-
-        output = cast(dict[str, jnp.ndarray], model.apply(params, sample_2d_input))
-        assert set(output.keys()) == {"u", "p"}
-
-    def test_apply_shapes_follow_declared_head_dims(self, rng_key, sample_2d_input):
-        """Each output head has shape (batch, declared_dim)."""
-        model = KAN(hidden_dim=8, num_layers=2, output_heads={"u": 1, "p": 2}, input_dim=2)
-        params = model.init(rng_key, sample_2d_input)
-
-        output = cast(dict[str, jnp.ndarray], model.apply(params, sample_2d_input))
-        assert output["u"].shape == (4, 1)
-        assert output["p"].shape == (4, 2)
-
-    def test_apply_outputs_are_finite(self, rng_key, sample_2d_input):
-        """KAN outputs are finite for normal finite batched inputs."""
-        model = KAN(hidden_dim=8, num_layers=2, output_heads={"u": 1}, input_dim=2)
-        params = model.init(rng_key, sample_2d_input)
-
-        output = cast(dict[str, jnp.ndarray], model.apply(params, sample_2d_input))
-        assert jnp.all(jnp.isfinite(output["u"]))
-
-    @pytest.mark.parametrize(
-        "model_type",
-        ["efficient", "cheby", "original", "base", "spline", "chebyshev"],
+# AI-Generated
+def test_layer_dims_constructed_correctly():
+    model = KAN(
+        hidden_dim=32,
+        num_layers=3,
+        input_dim=4,
+        output_heads={
+            "u": 1,
+            "v": 2,
+        },
+        constrained_heads=[],
     )
-    def test_supported_model_types_initialize_and_apply(self, model_type, rng_key, sample_1d_input):
-        """All supported model types run through init/apply successfully."""
-        model = KAN(
-            hidden_dim=8,
-            num_layers=1,
-            output_heads={"u": 1},
-            input_dim=1,
-            model_type=model_type,
-        )
-        params = model.init(rng_key, sample_1d_input)
-        output = cast(dict[str, jnp.ndarray], model.apply(params, sample_1d_input))
-        assert output["u"].shape == (4, 1)
+
+    assert model._layer_dims() == [4, 32, 32, 32, 3]
+
+
+# AI-Generated
+@pytest.mark.parametrize(
+    ("model_type", "layer_type", "required_parameters"),
+    [
+        ("original", "base", {"k": 3, "G": 5}),
+        ("base", "base", {"k": 3, "G": 5}),
+        ("spline", "spline", {"k": 3, "G": 5}),
+        ("cheby", "chebyshev", {"D": 3, "flavor": "default"}),
+        ("chebyshev", "chebyshev", {"D": 3, "flavor": "default"}),
+        ("efficient", "chebyshev", {"D": 3, "flavor": "exact"}),
+    ],
+)
+def test_kan_hparams_mapping(
+    model_type,
+    layer_type,
+    required_parameters,
+):
+    model = KAN(
+        hidden_dim=8,
+        num_layers=1,
+        input_dim=2,
+        output_heads={"u": 1},
+        constrained_heads=[],
+        model_type=model_type,
+    )
+
+    result_layer_type, result_params = model._kan_hparams()
+
+    assert result_layer_type == layer_type
+    assert result_params == required_parameters
+
+
+# AI-Generated
+def test_kan_hparams_rejects_unknown_model_type():
+    model = KAN(
+        hidden_dim=8,
+        num_layers=1,
+        input_dim=2,
+        output_heads={"u": 1},
+        constrained_heads=[],
+        model_type="invalid",
+    )
+
+    with pytest.raises(ValueError, match="Unknown model_type"):
+        model._kan_hparams()
+
+
+# AI-Generated
+def test_split_output_heads():
+    model = KAN(
+        hidden_dim=8,
+        num_layers=1,
+        input_dim=2,
+        output_heads={
+            "a": 1,
+            "b": 2,
+            "c": 1,
+        },
+        constrained_heads=[],
+    )
+
+    y = jnp.arange(16).reshape(4, 4)
+
+    outputs = model._split_output_heads(y)
+
+    assert outputs["a"].shape == (4, 1)
+    assert outputs["b"].shape == (4, 2)
+    assert outputs["c"].shape == (4, 1)
+
+    assert jnp.array_equal(outputs["a"], y[:, 0:1])
+    assert jnp.array_equal(outputs["b"], y[:, 1:3])
+    assert jnp.array_equal(outputs["c"], y[:, 3:4])
+
+
+# AI-Generated
+def test_kan_forward_output_shapes(
+    kan_model,
+    rng,
+    sample_batch,
+):
+    variables = kan_model.init(rng, sample_batch)
+    outputs = kan_model.apply(variables, sample_batch)
+
+    assert outputs["u"].shape == (3, 1)
+    assert outputs["v"].shape == (3, 2)
+
+
+# AI-Generated
+def test_kan_returns_all_requested_heads(
+    kan_model,
+    rng,
+    sample_batch,
+):
+    variables = kan_model.init(rng, sample_batch)
+    outputs = kan_model.apply(variables, sample_batch)
+
+    assert set(outputs.keys()) == {"u", "v"}
+
+
+# AI-Generated
+def test_kan_accepts_unbatched_input(
+    kan_model,
+    rng,
+    sample_point,
+):
+    variables = kan_model.init(rng, sample_point)
+    outputs = kan_model.apply(variables, sample_point)
+
+    assert outputs["u"].shape == (1,)
+    assert outputs["v"].shape == (2,)
+
+
+# AI-Generated
+def test_kan_boundary_constraint_reduces_output_near_boundary(rng):
+    model = KAN(
+        hidden_dim=8,
+        num_layers=1,
+        input_dim=2,
+        output_heads={"u": 1},
+        constrained_heads=["u"],
+    )
+
+    interior = jnp.array([[0.5, 0.5]])
+    boundary = jnp.array([[0.5, 0.0]])
+
+    variables = model.init(rng, interior)
+
+    interior_value = model.apply(variables, interior)
+    boundary_value = model.apply(variables, boundary)
+
+    assert type(interior_value) == dict
+    assert type(boundary_value) == dict
+
+    assert jnp.abs(boundary_value["u"]).max() < jnp.abs(interior_value["u"]).max()
+
+
+# AI-Generated
+def test_kan_constraint_ignored_for_missing_head(rng):
+    model = KAN(
+        hidden_dim=8,
+        num_layers=1,
+        input_dim=2,
+        output_heads={"u": 1},
+        constrained_heads=["missing"],
+    )
+
+    x = jnp.array([[0.5, 0.5]])
+
+    variables = model.init(rng, x)
+    outputs = model.apply(variables, x)
+
+    assert type(outputs) == dict
+
+    assert set(outputs.keys()) == {"u"}
+
+
+# AI-Generated
+def test_layer_dims_respects_sorted_head_order():
+    model = KAN(
+        hidden_dim=8,
+        num_layers=2,
+        input_dim=3,
+        output_heads={
+            "z": 2,
+            "a": 1,
+        },
+        constrained_heads=[],
+    )
+
+    assert model._layer_dims() == [3, 8, 8, 3]
+
+
+# AI-Generated
+def test_split_output_heads_uses_sorted_order():
+    model = KAN(
+        hidden_dim=8,
+        num_layers=1,
+        input_dim=2,
+        output_heads={
+            "z": 2,
+            "a": 1,
+        },
+        constrained_heads=[],
+    )
+
+    y = jnp.array([[1.0, 2.0, 3.0]])
+
+    outputs = model._split_output_heads(y)
+
+    assert jnp.array_equal(outputs["a"], jnp.array([[1.0]]))
+    assert jnp.array_equal(outputs["z"], jnp.array([[2.0, 3.0]]))

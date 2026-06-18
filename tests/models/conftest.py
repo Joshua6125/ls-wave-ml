@@ -1,35 +1,83 @@
-"""Shared fixtures for model-interface tests."""
-
 import pytest
+
 import jax
 import jax.numpy as jnp
 
-
-@pytest.fixture
-def rng_key():
-    """Deterministic key used for init/apply tests."""
-    return jax.random.PRNGKey(42)
+from src.models import MLP, MLPConfig, KAN, KANConfig
 
 
 @pytest.fixture
-def sample_1d_input():
-    """Batched 1D input points with shape (batch, dim=1)."""
-    return jnp.array([[0.1], [0.5], [0.7], [0.9]])
+def rng():
+    return jax.random.PRNGKey(0)
 
 
 @pytest.fixture
-def sample_2d_input():
-    """Batched 2D input points with shape (batch, dim=2)."""
-    return jnp.array([[0.1, 0.2], [0.5, 0.5], [0.7, 0.3], [0.9, 0.1]])
+def sample_batch():
+    # (batch, input_dim)
+    return jnp.array(
+        [
+            [0.2, 0.3],
+            [0.4, 0.7],
+            [0.6, 0.5],
+        ]
+    )
 
 
 @pytest.fixture
-def default_single_head():
-    """Single-head output contract used by most tests."""
-    return {"output": 1}
+def sample_point():
+    return jnp.array([0.5, 0.5])
 
 
 @pytest.fixture
-def multi_output_heads():
-    """Multi-head output contract used for interface validation."""
-    return {"u": 1, "p": 2, "sigma": 3}
+def mlp_model():
+    return MLP(
+        hidden_dim=16,
+        num_layers=2,
+        output_heads={
+            "u": 1,
+            "v": 2,
+        },
+        constrained_heads=["u"],
+    )
+
+
+@pytest.fixture
+def kan_model():
+    return KAN(
+        hidden_dim=16,
+        num_layers=2,
+        input_dim=2,
+        output_heads={
+            "u": 1,
+            "v": 2,
+        },
+        constrained_heads=["u"],
+        model_type="efficient",
+    )
+
+@pytest.fixture
+def mlp_config():
+    return MLPConfig(
+        hidden_dim=16,
+        num_layers=2,
+        output_heads={
+            "u": 1,
+            "v": 2,
+        },
+        constrained_heads=["u"],
+    )
+
+
+@pytest.fixture
+def kan_config():
+    return KANConfig(
+        hidden_dim=16,
+        num_layers=2,
+        input_dim=2,
+        output_heads={
+            "u": 1,
+            "v": 2,
+        },
+        constrained_heads=["u"],
+        model_type="efficient",
+    )

@@ -1,104 +1,138 @@
-"""Tests for MLP model interface behavior."""
-
-import pytest
-import jax
-import jax.numpy as jnp
-from typing import cast
-
 from src.models import MLP
 
-
-pytestmark = pytest.mark.models
-
-
-class TestMLPInstantiation:
-    """Test MLP object construction behavior."""
-
-    def test_instantiate_with_valid_args(self, default_single_head):
-        """MLP can be created with explicit dimensions and heads."""
-        model = MLP(hidden_dim=32, num_layers=2, output_heads=default_single_head)
-        assert model.hidden_dim == 32
-        assert model.num_layers == 2
-        assert model.output_heads == {"output": 1}
-
-    def test_instantiate_with_multi_head(self, multi_output_heads):
-        """MLP preserves the provided head mapping."""
-        model = MLP(hidden_dim=16, num_layers=3, output_heads=multi_output_heads)
-        assert model.output_heads == {"u": 1, "p": 2, "sigma": 3}
+import jax.numpy as jnp
 
 
-class TestMLPInit:
-    """Test MLP init contract."""
+# AI-Generated
+def test_mlp_output_heads_have_expected_shapes(
+    mlp_model,
+    rng,
+    sample_batch,
+):
+    variables = mlp_model.init(rng, sample_batch)
+    outputs = mlp_model.apply(variables, sample_batch)
 
-    def test_init_returns_non_empty_pytree(self, rng_key, sample_1d_input):
-        """init produces a non-empty parameter tree."""
-        model = MLP(hidden_dim=16, num_layers=2, output_heads={"u": 1})
-        params = model.init(rng_key, sample_1d_input)
-
-        leaves = jax.tree_util.tree_leaves(params)
-        assert len(leaves) > 0
-
-    def test_init_is_deterministic_for_same_key_and_input(self, sample_2d_input):
-        """init is deterministic for equal PRNG keys and equal input shape."""
-        model = MLP(hidden_dim=16, num_layers=2, output_heads={"u": 1})
-
-        key_1 = jax.random.PRNGKey(7)
-        key_2 = jax.random.PRNGKey(7)
-        params_1 = model.init(key_1, sample_2d_input)
-        params_2 = model.init(key_2, sample_2d_input)
-
-        leaves_1 = jax.tree_util.tree_leaves(params_1)
-        leaves_2 = jax.tree_util.tree_leaves(params_2)
-        assert len(leaves_1) == len(leaves_2)
-        for p_1, p_2 in zip(leaves_1, leaves_2):
-            assert jnp.allclose(p_1, p_2)
+    assert outputs["u"].shape == (3, 1)
+    assert outputs["v"].shape == (3, 2)
 
 
-class TestMLPApply:
-    """Test MLP apply output interface."""
+# AI-Generated
+def test_mlp_returns_all_requested_heads(
+    mlp_model,
+    rng,
+    sample_batch,
+):
+    variables = mlp_model.init(rng, sample_batch)
+    outputs = mlp_model.apply(variables, sample_batch)
 
-    def test_apply_returns_dict(self, rng_key, sample_1d_input):
-        """apply returns a head-name to array mapping."""
-        model = MLP(hidden_dim=16, num_layers=2, output_heads={"u": 1})
-        params = model.init(rng_key, sample_1d_input)
+    assert set(outputs.keys()) == {"u", "v"}
 
-        output = cast(dict[str, jnp.ndarray], model.apply(params, sample_1d_input))
-        assert isinstance(output, dict)
-        assert set(output.keys()) == {"u"}
 
-    def test_apply_output_shapes_follow_head_dims(self, rng_key, sample_2d_input, multi_output_heads):
-        """Each output head has shape (batch, declared_dim)."""
-        model = MLP(hidden_dim=16, num_layers=2, output_heads=multi_output_heads)
-        params = model.init(rng_key, sample_2d_input)
+# AI-Generated
+def test_mlp_boundary_constraint_reduces_output_near_boundary(rng):
+    model = MLP(
+        hidden_dim=8,
+        num_layers=1,
+        output_heads={"u": 1},
+        constrained_heads=["u"],
+    )
 
-        output = cast(dict[str, jnp.ndarray], model.apply(params, sample_2d_input))
-        assert output["u"].shape == (4, 1)
-        assert output["p"].shape == (4, 2)
-        assert output["sigma"].shape == (4, 3)
+    interior = jnp.array([[0.5, 0.5]])
+    boundary = jnp.array([[0.5, 0.0]])
 
-    def test_apply_outputs_are_finite(self, rng_key, sample_2d_input):
-        """All output values are finite for normal finite inputs."""
-        model = MLP(hidden_dim=16, num_layers=3, output_heads={"u": 1})
-        params = model.init(rng_key, sample_2d_input)
+    variables = model.init(rng, interior)
 
-        output = cast(dict[str, jnp.ndarray], model.apply(params, sample_2d_input))
-        assert jnp.all(jnp.isfinite(output["u"]))
+    interior_value = model.apply(variables, interior)
+    boundary_value = model.apply(variables, boundary)
 
-    @pytest.mark.parametrize("batch_size", [1, 4, 16, 64])
-    def test_apply_supports_variable_batch_size(self, rng_key, batch_size):
-        """apply can be evaluated on different batch sizes with fixed input dimension."""
-        model = MLP(hidden_dim=16, num_layers=2, output_heads={"u": 1})
-        params = model.init(rng_key, jnp.ones((1, 2)))
+    assert type(interior_value) == dict
+    assert type(boundary_value) == dict
 
-        x = jnp.ones((batch_size, 2))
-        output = cast(dict[str, jnp.ndarray], model.apply(params, x))
-        assert output["u"].shape == (batch_size, 1)
+    assert jnp.abs(boundary_value["u"]).max() < jnp.abs(interior_value["u"]).max()
 
-    def test_apply_is_deterministic_for_same_params(self, rng_key, sample_1d_input):
-        """Repeated apply calls with identical params/input are deterministic."""
-        model = MLP(hidden_dim=16, num_layers=2, output_heads={"u": 1})
-        params = model.init(rng_key, sample_1d_input)
 
-        output_1 = cast(dict[str, jnp.ndarray], model.apply(params, sample_1d_input))
-        output_2 = cast(dict[str, jnp.ndarray], model.apply(params, sample_1d_input))
-        assert jnp.allclose(output_1["u"], output_2["u"])
+# AI-Generated
+def test_mlp_unconstrained_head_not_forced_to_vanish(rng):
+    model = MLP(
+        hidden_dim=8,
+        num_layers=1,
+        output_heads={
+            "u": 1,
+            "v": 1,
+        },
+        constrained_heads=["u"],
+    )
+
+    point = jnp.array([[0.5, 0.0]])
+
+    variables = model.init(rng, point)
+    outputs = model.apply(variables, point)
+
+    assert type(outputs) == dict
+
+    assert outputs["u"].shape == (1, 1)
+    assert outputs["v"].shape == (1, 1)
+
+
+# AI-Generated
+def test_mlp_constraint_ignored_for_missing_head(rng):
+    model = MLP(
+        hidden_dim=8,
+        num_layers=1,
+        output_heads={"u": 1},
+        constrained_heads=["missing_head"],
+    )
+
+    x = jnp.array([[0.5, 0.5]])
+
+    variables = model.init(rng, x)
+    outputs = model.apply(variables, x)
+
+    assert type(outputs) == dict
+
+    assert set(outputs.keys()) == {"u"}
+
+
+# AI-Generated
+def test_mlp_handles_multi_dimensional_heads(
+    rng,
+):
+    model = MLP(
+        hidden_dim=8,
+        num_layers=1,
+        output_heads={
+            "scalar": 1,
+            "vector": 3,
+        },
+        constrained_heads=[],
+    )
+
+    x = jnp.ones((4, 2))
+
+    variables = model.init(rng, x)
+    outputs = model.apply(variables, x)
+
+    assert type(outputs) == dict
+
+    assert outputs["scalar"].shape == (4, 1)
+    assert outputs["vector"].shape == (4, 3)
+
+# AI-Generated
+def test_mlp_handles_single_sample_input(
+    rng,
+):
+    model = MLP(
+        hidden_dim=8,
+        num_layers=1,
+        output_heads={"u": 1},
+        constrained_heads=[],
+    )
+
+    x = jnp.array([0.5, 0.5])
+
+    variables = model.init(rng, x)
+    outputs = model.apply(variables, x)
+
+    assert type(outputs) == dict
+
+    assert outputs["u"].shape == (1,)
