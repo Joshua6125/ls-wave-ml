@@ -4,8 +4,6 @@ import pytest
 
 from src.models import (
     BuiltModelAdapter,
-    MLPConfig,
-    KANConfig,
     build_model,
 )
 
