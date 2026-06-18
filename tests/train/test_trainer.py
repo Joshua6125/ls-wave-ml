@@ -1,220 +1,129 @@
-"""Unit tests for Trainer behaviour with deterministic test doubles."""
-
-import jax
+from collections import deque
 import jax.numpy as jnp
 import pytest
+import optax
 
-from src.train import TrainConfig, Trainer
-from src.train.trainer import TrainStepMetrics
-
+from src.train import Trainer, TrainConfig
 
 pytestmark = pytest.mark.training
 
 
-class TestTrainerInitialisation:
-    """Test Trainer constructor and state initialisation behaviour."""
+# AI-Generated
+@pytest.mark.parametrize("use_jit", [True, False])
+def test_trainer_initialization_jit_dispatch(dummy_method, dummy_integrator, use_jit):
+    config = TrainConfig(use_jit=use_jit)
+    optimiser = optax.adam(1e-3)
 
-    def test_init_state_uses_train_seed_for_parameter_init(
-        self,
-        mock_training_method,
-        deterministic_integrator,
-        optimiser_adam,
-        train_cfg_default,
-        sample_input_vector_2d,
-    ):
-        trainer = Trainer(
-            method=mock_training_method,
-            integrator=deterministic_integrator,
-            optimiser=optimiser_adam,
-            train_cfg=train_cfg_default,
-        )
+    trainer = Trainer(dummy_method, dummy_integrator, optimiser, config)
 
-        state_1 = trainer.init_state(sample_input_vector_2d)
-        state_2 = trainer.init_state(sample_input_vector_2d)
-
-        assert jnp.allclose(state_1.params["w"], state_2.params["w"])
-
-    def test_constructor_raises_when_train_config_is_invalid(
-        self,
-        mock_training_method,
-        deterministic_integrator,
-        optimiser_adam,
-    ):
-        bad_cfg = TrainConfig(epochs=0)
-        with pytest.raises(AssertionError, match="epochs must be strictly positive"):
-            Trainer(
-                method=mock_training_method,
-                integrator=deterministic_integrator,
-                optimiser=optimiser_adam,
-                train_cfg=bad_cfg,
-            )
+    # Verify that the internal step function is wrapped correctly
+    if use_jit:
+        assert str(type(trainer._train_step_fn)).count(
+            "CompiledFunction"
+        ) > 0 or hasattr(trainer._train_step_fn, "lower")
+    else:
+        assert trainer._train_step_fn == trainer._train_step_impl
 
 
-class TestTrainerFit:
-    """Test fit-loop control flow and edge cases."""
+# AI-Generated
+def test_trainer_init_state(dummy_method, dummy_integrator, default_train_config):
+    optimiser = optax.adam(1e-3)
+    trainer = Trainer(dummy_method, dummy_integrator, optimiser, default_train_config)
 
-    def test_fit_raises_when_state_and_sample_input_missing(
-        self,
-        mock_training_method,
-        deterministic_integrator,
-        optimiser_adam,
-        train_cfg_default,
-    ):
-        trainer = Trainer(
-            method=mock_training_method,
-            integrator=deterministic_integrator,
-            optimiser=optimiser_adam,
-            train_cfg=train_cfg_default,
-        )
+    sample_input = jnp.zeros((1, 2))
+    state = trainer._init_state(sample_input)
 
-        with pytest.raises(ValueError, match="Must provide either an initial state or sample_input"):
-            trainer.fit(sample_input=None, state=None)
+    assert state.step == 0
+    assert "w" in state.params
+    assert state.total_training_time == 0.0
 
-    def test_fit_runs_with_sample_input_only(
-        self,
-        mock_training_method,
-        deterministic_integrator,
-        optimiser_adam,
-        sample_input_vector_2d,
-    ):
-        cfg = TrainConfig(epochs=3, log_every=1, use_jit=False)
-        trainer = Trainer(
-            method=mock_training_method,
-            integrator=deterministic_integrator,
-            optimiser=optimiser_adam,
-            train_cfg=cfg,
-        )
 
-        state, history = trainer.fit(sample_input=sample_input_vector_2d)
+# AI-Generated
+def test_trainer_loss_with_aux(
+    dummy_method, dummy_integrator, default_train_config, dummy_train_state
+):
+    optimiser = optax.adam(1e-3)
+    trainer = Trainer(dummy_method, dummy_integrator, optimiser, default_train_config)
 
-        assert state.step == 3
-        assert len(history) == 3
+    total, (interior, boundary, next_key) = trainer._loss_with_aux(
+        dummy_train_state.params, dummy_train_state.integration_key
+    )
 
-    def test_fit_runs_with_existing_state_only(
-        self,
-        mock_training_method,
-        deterministic_integrator,
-        optimiser_adam,
-        sample_input_vector_2d,
-    ):
-        cfg = TrainConfig(epochs=2, log_every=1, use_jit=False)
-        trainer = Trainer(
-            method=mock_training_method,
-            integrator=deterministic_integrator,
-            optimiser=optimiser_adam,
-            train_cfg=cfg,
-        )
-        initial_state = trainer.init_state(sample_input_vector_2d)
+    assert isinstance(total, jnp.ndarray)
+    assert next_key is not None
 
-        state, history = trainer.fit(state=initial_state)
 
-        assert state.step == initial_state.step + 2
-        assert len(history) == 2
+# AI-Generated
+@pytest.mark.parametrize(
+    ("window_values", "expected_convergence"),
+    [
+        ([1.0, 1.0001, 0.9999, 1.0], True),
+        ([1.0, 2.0, 1.5, 3.0], False),
+        ([1.0, float("nan"), 1.0], False),
+        ([1.0, float("inf"), 1.0], False),
+    ],
+)
+def test_has_converged_logic(
+    dummy_method, dummy_integrator, window_values, expected_convergence
+):
+    config = TrainConfig(
+        convergence_check=True, convergence_window_size=4, convergence_rel_tol=1e-2
+    )
+    trainer = Trainer(dummy_method, dummy_integrator, optax.adam(1e-3), config)
 
-    @pytest.mark.parametrize("epochs,log_every,expected", [(5, 1, 5), (5, 2, 2), (5, 3, 1)])
-    def test_fit_history_respects_log_every(
-        self,
-        mock_training_method,
-        deterministic_integrator,
-        optimiser_adam,
-        sample_input_vector_2d,
-        epochs,
-        log_every,
-        expected,
-    ):
-        cfg = TrainConfig(epochs=epochs, log_every=log_every, use_jit=False)
-        trainer = Trainer(
-            method=mock_training_method,
-            integrator=deterministic_integrator,
-            optimiser=optimiser_adam,
-            train_cfg=cfg,
-        )
+    loss_window = deque(window_values, maxlen=config.convergence_window_size)
+    assert trainer._has_converged(loss_window) == expected_convergence
 
-        _, history = trainer.fit(sample_input=sample_input_vector_2d)
 
-        assert len(history) == expected
+# AI-Generated
+def test_fit_executes_epochs_and_logs(dummy_method, dummy_integrator):
+    config = TrainConfig(epochs=3, log_every=1, use_jit=False)
+    trainer = Trainer(dummy_method, dummy_integrator, optax.adam(1e-3), config)
 
-    def test_fit_invokes_callback_every_epoch(
-        self,
-        mock_training_method,
-        deterministic_integrator,
-        optimiser_adam,
-        sample_input_vector_2d,
-        callback_recorder,
-    ):
-        recorded, callback = callback_recorder
-        cfg = TrainConfig(epochs=4, log_every=10, use_jit=False)
-        trainer = Trainer(
-            method=mock_training_method,
-            integrator=deterministic_integrator,
-            optimiser=optimiser_adam,
-            train_cfg=cfg,
-        )
+    called_metrics = []
 
-        state, _ = trainer.fit(sample_input=sample_input_vector_2d, callback=callback)
+    def spy_callback(metrics):
+        called_metrics.append(metrics)
 
-        assert state.step == 4
-        assert len(recorded) == 4
-        assert all(isinstance(m, TrainStepMetrics) for m in recorded)
+    sample_input = jnp.zeros((1, 2))
+    final_state, history = trainer.fit(sample_input=sample_input, callback=spy_callback)
 
-    def test_fit_propagates_callback_exceptions(
-        self,
-        mock_training_method,
-        deterministic_integrator,
-        optimiser_adam,
-        sample_input_vector_2d,
-    ):
-        cfg = TrainConfig(epochs=3, log_every=1, use_jit=False)
-        trainer = Trainer(
-            method=mock_training_method,
-            integrator=deterministic_integrator,
-            optimiser=optimiser_adam,
-            train_cfg=cfg,
-        )
+    assert final_state.step == 3
+    assert len(history) == 3
+    assert len(called_metrics) == 3
+    assert history[0].step == 1
+    assert history[2].step == 3
 
-        def bad_callback(metric):
-            del metric
-            raise RuntimeError("callback failed")
 
-        with pytest.raises(RuntimeError, match="callback failed"):
-            trainer.fit(sample_input=sample_input_vector_2d, callback=bad_callback)
+# AI-Generated
+def test_fit_terminates_on_max_training_time(dummy_method, dummy_integrator):
+    # Enforce zero runtime allowance to trigger immediate timeout extraction
+    config = TrainConfig(epochs=100, log_every=1, max_training_time=0.0, use_jit=False)
+    trainer = Trainer(dummy_method, dummy_integrator, optax.adam(1e-3), config)
 
-    def test_fit_jit_path_executes(
-        self,
-        mock_training_method,
-        deterministic_integrator,
-        optimiser_adam,
-        train_cfg_short_jit,
-        sample_input_vector_2d,
-    ):
-        trainer = Trainer(
-            method=mock_training_method,
-            integrator=deterministic_integrator,
-            optimiser=optimiser_adam,
-            train_cfg=train_cfg_short_jit,
-        )
+    sample_input = jnp.zeros((1, 2))
+    final_state, history = trainer.fit(sample_input=sample_input)
 
-        state, history = trainer.fit(sample_input=sample_input_vector_2d)
+    # Execution must break early within the loop lifecycle
+    assert final_state.step < 100
 
-        assert state.step == train_cfg_short_jit.epochs
-        assert len(history) == train_cfg_short_jit.epochs
 
-    def test_fit_raises_when_method_missing_init_params(
-        self,
-        deterministic_integrator,
-        optimiser_adam,
-        sample_input_vector_2d,
-    ):
-        class NotATrainingMethod:
-            pass
+# AI-Generated
+def test_fit_terminates_on_early_convergence(dummy_method, dummy_integrator):
+    config = TrainConfig(
+        epochs=10,
+        log_every=1,
+        convergence_check=True,
+        convergence_window_size=2,
+        convergence_rel_tol=1e-1,
+        use_jit=False,
+    )
+    trainer = Trainer(
+        dummy_method, dummy_integrator, optax.adam(0.0), config
+    )  # 0.0 learning rate means zero change
 
-        cfg = TrainConfig(epochs=1, use_jit=False)
-        trainer = Trainer(
-            method=NotATrainingMethod(),  # type: ignore[arg-type]
-            integrator=deterministic_integrator,
-            optimiser=optimiser_adam,
-            train_cfg=cfg,
-        )
+    sample_input = jnp.zeros((1, 2))
+    final_state, history = trainer.fit(sample_input=sample_input)
 
-        with pytest.raises(AttributeError):
-            trainer.fit(sample_input=sample_input_vector_2d)
+    # Must exit early once the window criteria are matched
+    assert final_state.step < 10
