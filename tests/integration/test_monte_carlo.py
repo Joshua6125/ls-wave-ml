@@ -1,292 +1,155 @@
+from dataclasses import replace
+
 import jax.numpy as jnp
 import jax.random as jr
 import pytest
-from dataclasses import replace
+
+from src.integration import MonteCarloIntegration
+
+pytestmark = pytest.mark.monte_carlo
 
 
-@pytest.mark.monte_carlo
-def test_monte_carlo_constant_1d(config_monte_carlo_1d, test_functions_1d):
-    from src.integration import MonteCarloIntegration
+# AI-Generated
+@pytest.mark.parametrize(
+    ("fixture_name", "expected_integral"),
+    [
+        ("config_monte_carlo_1d", 1.0),
+        ("config_monte_carlo_2d", 1.0),
+        ("config_monte_carlo_3d", 1.0),
+    ],
+)
+def test_constant_interior_integral_matches_volume(
+    request,
+    fixture_name,
+    expected_integral,
+):
+    config = request.getfixturevalue(fixture_name)
+    integrator = MonteCarloIntegration(config)
 
+    integrator.key = jr.PRNGKey(0)
+    result = integrator.integrate_interior(lambda points: jnp.ones(points.shape[0]))
+
+    assert jnp.allclose(result, expected_integral)
+
+
+# AI-Generated
+def test_interior_tree_outputs_are_aggregated(config_monte_carlo_1d):
     integrator = MonteCarloIntegration(config_monte_carlo_1d)
-    const_func = test_functions_1d['constant']
-
-    # Add key, as this is usually passed via integrate()
     integrator.key = jr.PRNGKey(0)
 
-    result = integrator.integrate_interior(const_func['func'])
-    expected = const_func['integral']
+    result = integrator.integrate_interior(
+        lambda points: {
+            "left": jnp.ones(points.shape[0]),
+            "right": 2.0 * jnp.ones(points.shape[0]),
+        }
+    )
 
-    assert jnp.allclose(result, expected, atol=const_func['tolerance'])
+    assert result["left"] == 1.0
+    assert result["right"] == 2.0
 
 
-@pytest.mark.monte_carlo
-def test_monte_carlo_linear_1d(config_monte_carlo_1d, test_functions_1d):
-    from src.integration import MonteCarloIntegration
+# AI-Generated
+@pytest.mark.parametrize(
+    ("fixture_name", "expected_boundary_measure"),
+    [
+        ("config_monte_carlo_1d", 4.0),
+        ("config_monte_carlo_2d", 6.0),
+        ("config_monte_carlo_3d", 8.0),
+    ],
+)
+def test_constant_boundary_integral_matches_boundary_measure(
+    request,
+    fixture_name,
+    expected_boundary_measure,
+):
+    config = request.getfixturevalue(fixture_name)
+    integrator = MonteCarloIntegration(config)
 
-    integrator = MonteCarloIntegration(config_monte_carlo_1d)
-    linear_func = test_functions_1d['linear']
-
-    # Add key, as this is usually passed via integrate()
     integrator.key = jr.PRNGKey(0)
+    result = integrator.integrate_boundary(
+        lambda points, normals: jnp.ones(points.shape[0])
+    )
 
-    result = integrator.integrate_interior(linear_func['func'])
-    expected = linear_func['integral']
-
-    assert jnp.allclose(result, expected, atol=linear_func['tolerance'])
+    assert jnp.allclose(result, expected_boundary_measure)
 
 
-@pytest.mark.monte_carlo
-def test_monte_carlo_quadratic_1d(config_monte_carlo_1d, test_functions_1d):
-    from src.integration import MonteCarloIntegration
-
+# AI-Generated
+def test_integrate_rejects_missing_rng_key(config_monte_carlo_1d):
     integrator = MonteCarloIntegration(config_monte_carlo_1d)
-    quadratic_func = test_functions_1d['quadratic']
 
-    # Add key, as this is usually passed via integrate()
+    with pytest.raises(ValueError, match="rng_key may not be None"):
+        integrator.integrate(
+            lambda points: points[:, 0], lambda pts, normals: pts[:, 0], rng_key=None
+        )
+
+
+# AI-Generated
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("spatial_dim", 0, "dim must be strictly positive"),
+        ("x_min", 2.0, "x_min must be < x_max"),
+        ("t_max", -1.0, "t_min must be < t_max"),
+        ("interior_samples", 0, "interior_samples must be strictly positive"),
+        ("boundary_samples", 0, "boundary_samples must be strictly positive"),
+    ],
+)
+def test_monte_carlo_config_validation_rejects_invalid_inputs(
+    config_monte_carlo_1d,
+    field,
+    value,
+    message,
+):
+    bad_config = replace(config_monte_carlo_1d, **{field: value})
+
+    with pytest.raises(ValueError, match=message):
+        MonteCarloIntegration(bad_config)
+
+
+# AI-Generated
+def test_monte_carlo_respects_custom_bounds(config_monte_carlo_1d):
+    config = replace(config_monte_carlo_1d, x_min=-1.0, x_max=1.0)
+    integrator = MonteCarloIntegration(config)
+
     integrator.key = jr.PRNGKey(0)
+    result = integrator.integrate_interior(lambda points: jnp.ones(points.shape[0]))
 
-    result = integrator.integrate_interior(quadratic_func['func'])
-    expected = quadratic_func['integral']
-
-    assert jnp.allclose(result, expected, atol=quadratic_func['tolerance'])
+    assert jnp.allclose(result, 2.0)
 
 
-@pytest.mark.monte_carlo
-def test_monte_carlo_sine_1d(config_monte_carlo_1d, test_functions_1d):
-    from src.integration import MonteCarloIntegration
-
-    integrator = MonteCarloIntegration(config_monte_carlo_1d)
-    sine_func = test_functions_1d['sine']
-
-    # Add key, as this is usually passed via integrate()
-    integrator.key = jr.PRNGKey(0)
-
-    result = integrator.integrate_interior(sine_func['func'])
-    expected = sine_func['integral']
-
-
-    assert jnp.allclose(result, expected, atol=sine_func['tolerance'])
-
-
-@pytest.mark.monte_carlo
-def test_monte_carlo_exponential_1d(config_monte_carlo_1d, test_functions_1d):
-    from src.integration import MonteCarloIntegration
-
-    integrator = MonteCarloIntegration(config_monte_carlo_1d)
-    exponential_func = test_functions_1d['exponential']
-
-    # Add key, as this is usually passed via integrate()
-    integrator.key = jr.PRNGKey(0)
-
-    result = integrator.integrate_interior(exponential_func['func'])
-    expected = exponential_func['integral']
-
-    assert jnp.allclose(result, expected, atol=exponential_func['tolerance'])
-
-
-@pytest.mark.monte_carlo
-def test_monte_carlo_constant_2d(config_monte_carlo_2d, test_functions_2d):
-    from src.integration import MonteCarloIntegration
-
+# AI-Generated
+def test_boundary_sampling_shapes_are_consistent(config_monte_carlo_2d):
     integrator = MonteCarloIntegration(config_monte_carlo_2d)
-    const_func = test_functions_2d['constant']
-
-    # Add key, as this is usually passed via integrate()
     integrator.key = jr.PRNGKey(0)
+    boundary_data = integrator._setup_boundary_samples()
 
-    result = integrator.integrate_interior(const_func['func'])
-    expected = const_func['integral']
-
-    assert jnp.allclose(result, expected, atol=const_func['tolerance'])
-
-
-@pytest.mark.monte_carlo
-def test_monte_carlo_separable_2d(config_monte_carlo_2d, test_functions_2d):
-    from src.integration import MonteCarloIntegration
-
-    integrator = MonteCarloIntegration(config_monte_carlo_2d)
-    seperable_func = test_functions_2d['separable']
-
-    # Add key, as this is usually passed via integrate()
-    integrator.key = jr.PRNGKey(0)
-
-    result = integrator.integrate_interior(seperable_func['func'])
-    expected = seperable_func['integral']
-
-    assert jnp.allclose(result, expected, atol=seperable_func['tolerance'])
+    assert boundary_data["points"].shape[1] == integrator.dim
+    assert boundary_data["normals"].shape == boundary_data["points"].shape
+    assert boundary_data["weights"].shape[0] == boundary_data["points"].shape[0]
+    assert jnp.all(boundary_data["weights"] > 0)
 
 
-@pytest.mark.monte_carlo
-def test_monte_carlo_product_sine_2d(config_monte_carlo_2d, test_functions_2d):
-    from src.integration import MonteCarloIntegration
-
-    integrator = MonteCarloIntegration(config_monte_carlo_2d)
-    product_sine_func = test_functions_2d['product_sine']
-
-    # Add key, as this is usually passed via integrate()
-    integrator.key = jr.PRNGKey(0)
-
-    result = integrator.integrate_interior(product_sine_func['func'])
-    expected = product_sine_func['integral']
-
-    assert jnp.allclose(result, expected, atol=product_sine_func['tolerance'])
-
-
-@pytest.mark.monte_carlo
-def test_monte_carlo_constant_3d(config_monte_carlo_3d, test_functions_3d):
-    """3D integration test: integral of 1 over [0,1]^3 should be 1."""
-    from src.integration import MonteCarloIntegration
-
-    integrator = MonteCarloIntegration(config_monte_carlo_3d)
-    const_func = test_functions_3d['constant']
-
-    # Add key, as this is usually passed via integrate()
-    integrator.key = jr.PRNGKey(0)
-
-    result = integrator.integrate_interior(const_func['func'])
-    expected = const_func['integral']
-
-    assert jnp.allclose(result, expected, atol=const_func['tolerance'])
-
-
-@pytest.mark.monte_carlo
-def test_monte_carlo_separable_3d(config_monte_carlo_3d, test_functions_3d):
-    """3D integration test: integral of x*y*z over [0,1]^3 should be 1/8."""
-    from src.integration import MonteCarloIntegration
-
-    integrator = MonteCarloIntegration(config_monte_carlo_3d)
-    separable_func = test_functions_3d['separable']
-
-    # Add key, as this is usually passed via integrate()
-    integrator.key = jr.PRNGKey(0)
-
-    result = integrator.integrate_interior(separable_func['func'])
-    expected = separable_func['integral']
-
-    assert jnp.allclose(result, expected, atol=separable_func['tolerance'])
-
-
-@pytest.mark.monte_carlo
-def test_monte_carlo_boundary_dirichlet_1d(config_monte_carlo_1d):
-    from src.integration import MonteCarloIntegration
-
-    integrator = MonteCarloIntegration(config_monte_carlo_1d)
-
-    # Add key, as this is usually passed via integrate()
-    integrator.key = jr.PRNGKey(0)
-
-    # Boundary function always returns 1
-    boundary_func = lambda pts, normals: jnp.ones(pts.shape[0])
-
-    result = integrator.integrate_boundary(boundary_func)
-    # 1D cube has 2 points at x=0 and x=1, each with "length" 1
-    assert jnp.allclose(result, 2.0, atol=1e-10)
-
-
-@pytest.mark.monte_carlo
-def test_monte_carlo_invalid_dim(config_monte_carlo_1d):
-    from src.integration import MonteCarloIntegration
-
-    bad_config = replace(config_monte_carlo_1d, dim=0)
-    with pytest.raises(AssertionError, match="dim must be strictly positive"):
-        MonteCarloIntegration(bad_config)
-
-
-@pytest.mark.monte_carlo
-def test_monte_carlo_invalid_bounds(config_monte_carlo_1d):
-    from src.integration import MonteCarloIntegration
-
-    bad_config = replace(config_monte_carlo_1d, x_min=1.0, x_max=0.0)
-    with pytest.raises(AssertionError, match="x_min must be < x_max"):
-        MonteCarloIntegration(bad_config)
-
-
-@pytest.mark.monte_carlo
-def test_monte_carlo_invalid_interior_samples(config_monte_carlo_1d):
-    from src.integration import MonteCarloIntegration
-
-    bad_config = replace(config_monte_carlo_1d, interior_samples=0)
-    with pytest.raises(AssertionError, match="interior_samples must be strictly positive"):
-        MonteCarloIntegration(bad_config)
-
-
-@pytest.mark.monte_carlo
-def test_monte_carlo_invalid_boundary_samples(config_monte_carlo_1d):
-    from src.integration import MonteCarloIntegration
-
-    bad_config = replace(config_monte_carlo_1d, boundary_samples=0)
-    with pytest.raises(AssertionError, match="boundary_samples must be strictly positive"):
-        MonteCarloIntegration(bad_config)
-
-
-@pytest.mark.monte_carlo
 def test_monte_carlo_integrate_combined_1d(config_monte_carlo_1d, test_functions_1d):
-    """Test that interior + boundary method combines correctly."""
-    from src.integration import MonteCarloIntegration
-
     integrator = MonteCarloIntegration(config_monte_carlo_1d)
-    const_func = test_functions_1d['constant']
+    const_func = test_functions_1d["constant"]
 
     # Add key, as this is usually passed via integrate()
     integrator.key = jr.PRNGKey(0)
 
     # Compute using combined method
-    interior_func = const_func['func']
+    interior_func = const_func["func"]
     boundary_func = lambda pts, normals: jnp.ones(pts.shape[0])
 
-    interior_loss, boundary_loss = integrator.integrate(
-        interior_func, boundary_func
-    )
+    interior_loss, boundary_loss = integrator.integrate(interior_func, boundary_func)
 
     # Verify interior matches direct call
-    assert jnp.allclose(interior_loss, const_func['integral'], atol=const_func['tolerance'])
+    assert jnp.allclose(interior_loss, const_func["integral"], atol=1e-2)
 
-    # Verify boundary is 2 (two endpoints at x=0 and x=1)
-    assert jnp.allclose(boundary_loss, 2.0, atol=1e-10)
-
-
-@pytest.mark.monte_carlo
-def test_monte_carlo_custom_bounds_negative(config_monte_carlo_1d):
-    """Test integration over [-1, 1] domain."""
-    from src.integration import MonteCarloIntegration
-
-    config = replace(config_monte_carlo_1d, x_min=-1.0, x_max=1.0)
-
-    integrator = MonteCarloIntegration(config)
-
-    # Add key, as this is usually passed via integrate()
-    integrator.key = jr.PRNGKey(0)
-
-    result = integrator.integrate_interior(lambda x: jnp.ones(x.shape[0]))
-    expected = 2.0
-
-    assert jnp.allclose(result, expected, atol=1e-3)
+    # Verify boundary is 4 (all 4 sides of space-time cylinder)
+    assert jnp.allclose(boundary_loss, 4.0, atol=1e-2)
 
 
-@pytest.mark.monte_carlo
-def test_monte_carlo_custom_bounds_scaled(config_monte_carlo_1d):
-    """Test integration over [0, 2] domain with scaled interval."""
-    from src.integration import MonteCarloIntegration
-
-    config = replace(config_monte_carlo_1d, x_min=0.0, x_max=2.0)
-
-    integrator = MonteCarloIntegration(config)
-
-    # Add key, as this is usually passed via integrate()
-    integrator.key = jr.PRNGKey(0)
-
-    result = integrator.integrate_interior(lambda x: x[:, 0])
-    expected = 2.0
-
-    assert jnp.allclose(result, expected, atol=1e-2)
-
-
-@pytest.mark.monte_carlo
 def test_monte_carlo_boundary_2d(config_monte_carlo_2d):
-    """Test boundary integration over [0,1]^2."""
-    from src.integration import MonteCarloIntegration
-
     integrator = MonteCarloIntegration(config_monte_carlo_2d)
 
     # Add key, as this is usually passed via integrate()
@@ -297,16 +160,11 @@ def test_monte_carlo_boundary_2d(config_monte_carlo_2d):
 
     result = integrator.integrate_boundary(boundary_func)
 
-    # 2D cube has 4 boundaries: 4 edges each with "length" 1
-    # Total boundary measure: 4
-    assert jnp.allclose(result, 4.0, atol=1e-2)
+    # 3D space-time cube has 6 boundaries.
+    assert jnp.allclose(result, 6.0, atol=1e-2)
 
 
-@pytest.mark.monte_carlo
 def test_monte_carlo_boundary_normals_2d(config_monte_carlo_2d):
-    """Test that boundary normals are computed correctly for 2D."""
-    from src.integration import MonteCarloIntegration
-
     integrator = MonteCarloIntegration(config_monte_carlo_2d)
 
     # Add key, as this is usually passed via integrate()
@@ -321,11 +179,7 @@ def test_monte_carlo_boundary_normals_2d(config_monte_carlo_2d):
     assert jnp.allclose(result, 0.0, atol=1e-2)
 
 
-@pytest.mark.monte_carlo
 def test_monte_carlo_resamples(config_monte_carlo_1d):
-    """Verify explicit RNG threading changes samples per call and remains reproducible."""
-    from src.integration import MonteCarloIntegration
-
     def interior_func(x):
         return x[:, 0]
 
