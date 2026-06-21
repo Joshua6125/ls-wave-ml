@@ -1,3 +1,10 @@
+'''
+Base class for N-D integration domains for hypercubes.
+'''
+# Author: Joshua van Rooij
+# University: UvA
+# Email: joshuavanrooij@gmail.com
+
 from abc import ABC, abstractmethod
 from typing import Callable, Any
 

@@ -10,3 +10,6 @@ Run all tests with:
 Or specific modules:
     pytest tests/integration/
 """
+# Author: Joshua van Rooij
+# University: UvA
+# Email: joshuavanrooij@gmail.com

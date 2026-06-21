@@ -1,3 +1,10 @@
+'''
+Gauss-Legendre quadrature integration.
+'''
+# Author: Joshua van Rooij
+# University: UvA
+# Email: joshuavanrooij@gmail.com
+
 from typing import Callable, Any
 from .base import NDCubeIntegration
 from .config import QuadratureConfig
@@ -13,7 +20,7 @@ class QuadratureIntegration(NDCubeIntegration):
     """
     Tensor-product Gauss-Legendre quadrature on a space-time hyperrectangle.
 
-    Each coordinate axis is partitioned into `grid_size` subintervals and a
+    Each coordinate axis is partitioned into `grid_size` sub-intervals and a
     degree-`degree` Gauss-Legendre rule is applied on every segment. The
     resulting multidimensional rule is formed via tensor products.
 

@@ -1,3 +1,10 @@
+'''
+Configs for integration objects.
+'''
+# Author: Joshua van Rooij
+# University: UvA
+# Email: joshuavanrooij@gmail.com
+
 from dataclasses import dataclass
 from typing import Literal, TypeAlias
 

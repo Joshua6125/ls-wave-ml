@@ -1,3 +1,7 @@
+# Author: Joshua van Rooij
+# University: UvA
+# Email: joshuavanrooij@gmail.com
+
 from src.loss_functions.fosls import FOSLSConfig
 
 import pytest

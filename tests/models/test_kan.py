@@ -1,3 +1,7 @@
+# Author: Joshua van Rooij
+# University: UvA
+# Email: joshuavanrooij@gmail.com
+
 from src.models import KAN
 
 import jax.numpy as jnp

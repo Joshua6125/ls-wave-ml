@@ -1,3 +1,10 @@
+'''
+Gradient PINN loss method.
+'''
+# Author: Joshua van Rooij
+# University: UvA
+# Email: joshuavanrooij@gmail.com
+
 import jax
 import jax.numpy as jnp
 

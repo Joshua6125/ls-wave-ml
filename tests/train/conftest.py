@@ -1,4 +1,7 @@
 """Shared fixtures for training module tests."""
+# Author: Joshua van Rooij
+# University: UvA
+# Email: joshuavanrooij@gmail.com
 
 from typing import Any, Callable
 import jax

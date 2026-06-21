@@ -1,3 +1,10 @@
+'''
+Builder for neural model objects.
+'''
+# Author: Joshua van Rooij
+# University: UvA
+# Email: joshuavanrooij@gmail.com
+
 from dataclasses import dataclass, field
 from typing import TypeAlias, Mapping, Protocol, Any, cast
 from typing_extensions import runtime_checkable

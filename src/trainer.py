@@ -1,3 +1,10 @@
+'''
+Main EP for training neural approximations of the wave equation.
+'''
+# Author: Joshua van Rooij
+# University: UvA
+# Email: joshuavanrooij@gmail.com
+
 from typing import Callable
 
 import jax.numpy as jnp

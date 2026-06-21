@@ -1,4 +1,7 @@
 """Shared fixtures for gPINN tests."""
+# Author: Joshua van Rooij
+# University: UvA
+# Email: joshuavanrooij@gmail.com
 
 import jax.numpy as jnp
 import pytest

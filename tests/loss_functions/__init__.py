@@ -3,3 +3,6 @@
 Run with:
     pytest tests/loss_functions/
 """
+# Author: Joshua van Rooij
+# University: UvA
+# Email: joshuavanrooij@gmail.com

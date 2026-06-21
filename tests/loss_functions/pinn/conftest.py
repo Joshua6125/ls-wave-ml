@@ -1,4 +1,7 @@
 """Shared fixtures for PINN tests."""
+# Author: Joshua van Rooij
+# University: UvA
+# Email: joshuavanrooij@gmail.com
 
 from dataclasses import replace
 

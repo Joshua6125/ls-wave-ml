@@ -1,3 +1,10 @@
+'''
+Variational PINN loss.
+'''
+# Author: Joshua van Rooij
+# University: UvA
+# Email: joshuavanrooij@gmail.com
+
 import itertools
 from typing import Callable
 

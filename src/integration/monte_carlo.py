@@ -1,3 +1,10 @@
+"""
+Monte-Carlo integration.
+"""
+# Author: Joshua van Rooij
+# University: UvA
+# Email: joshuavanrooij@gmail.com
+
 from typing import Callable, Any
 from .base import NDCubeIntegration
 from .config import MonteCarloConfig

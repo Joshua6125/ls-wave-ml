@@ -1,4 +1,9 @@
-"""Base classes and interfaces for training algorithms."""
+'''
+Base classes and algorithms configs for all loss formulations.
+'''
+# Author: Joshua van Rooij
+# University: UvA
+# Email: joshuavanrooij@gmail.com
 
 from abc import abstractmethod
 from dataclasses import dataclass

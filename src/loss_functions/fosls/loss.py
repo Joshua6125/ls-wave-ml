@@ -1,3 +1,10 @@
+'''
+First-Order Systems Least-Squares loss.
+'''
+# Author: Joshua van Rooij
+# University: UvA
+# Email: joshuavanrooij@gmail.com
+
 from typing import Callable
 
 import jax

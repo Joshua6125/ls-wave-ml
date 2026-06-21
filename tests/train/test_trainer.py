@@ -1,3 +1,7 @@
+# Author: Joshua van Rooij
+# University: UvA
+# Email: joshuavanrooij@gmail.com
+
 from collections import deque
 import jax.numpy as jnp
 import pytest

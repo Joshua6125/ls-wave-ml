@@ -1,4 +1,9 @@
-"""PINN loss function."""
+'''
+PINN loss.
+'''
+# Author: Joshua van Rooij
+# University: UvA
+# Email: joshuavanrooij@gmail.com
 
 from typing import Callable
 

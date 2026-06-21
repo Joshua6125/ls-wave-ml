@@ -1,3 +1,10 @@
+'''
+Main training loop.
+'''
+# Author: Joshua van Rooij
+# University: UvA
+# Email: joshuavanrooij@gmail.com
+
 import inspect
 import math
 from collections import deque

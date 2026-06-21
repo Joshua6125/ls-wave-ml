@@ -1,3 +1,7 @@
+# Author: Joshua van Rooij
+# University: UvA
+# Email: joshuavanrooij@gmail.com
+
 import pytest
 
 import jax

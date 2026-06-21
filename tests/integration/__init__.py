@@ -7,3 +7,6 @@ Test modules:
 Run with:
     pytest tests/integration/
 """
+# Author: Joshua van Rooij
+# University: UvA
+# Email: joshuavanrooij@gmail.com

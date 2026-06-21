@@ -1,3 +1,10 @@
+'''
+Config for gradient PINN loss.
+'''
+# Author: Joshua van Rooij
+# University: UvA
+# Email: joshuavanrooij@gmail.com
+
 from dataclasses import dataclass, field
 from typing import Callable, Literal
 

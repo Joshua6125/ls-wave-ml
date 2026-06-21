@@ -1,3 +1,10 @@
+'''
+Multi-Layer Perceptron model.
+'''
+# Author: Joshua van Rooij
+# University: UvA
+# Email: joshuavanrooij@gmail.com
+
 from typing import Mapping
 
 import flax.linen as nn

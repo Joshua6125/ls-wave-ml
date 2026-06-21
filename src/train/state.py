@@ -1,3 +1,10 @@
+'''
+Training state config.
+'''
+# Author: Joshua van Rooij
+# University: UvA
+# Email: joshuavanrooij@gmail.com
+
 from dataclasses import dataclass
 from typing import Any
 
