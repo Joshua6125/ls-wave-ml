@@ -81,6 +81,7 @@ methods:
       v: 1
       sigma: 1
     ic_weight: 1.0
+    constrained_heads: ["v"]
 
 
 # ----------------

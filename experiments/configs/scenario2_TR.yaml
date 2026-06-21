@@ -75,17 +75,20 @@ methods:
       u: 1
     ic_weight: 1.0
     bc_weight: 100.0
+    constrained_heads: ["u"]
   fosls:
     output_heads:
       v: 1
       sigma: 1
     ic_weight: 1.0
+    constrained_heads: ["v"]
   vpinn:
     output_heads:
       u: 1
     ic_weight: 1.0
     bc_weight: 10.0
     n_test_functions: 400
+    constrained_heads: ["u"]
 
 # ----------------
 # Data analysis parameters
