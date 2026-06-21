@@ -1,3 +1,8 @@
+# Generate all plots from present data.
+# Author: Joshua van Rooij
+# University: UvA
+# Email: joshuavanrooij@gmail.com
+
 python main.py --config-name scenario1_DOF hydra.run.dir=outputs/current/S1_DOF_3 generate_data=False make_plots=True
 python main.py --config-name scenario2_DOF hydra.run.dir=outputs/current/S2_DOF_3 generate_data=False make_plots=True
 python main.py --config-name scenario3_DOF hydra.run.dir=outputs/current/S3_DOF_3 generate_data=False make_plots=True

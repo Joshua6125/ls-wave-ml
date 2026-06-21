@@ -1,3 +1,11 @@
+"""
+Utility functions for the experiment setups of the wave equation.
+"""
+
+# Author: Joshua van Rooij
+# University: UvA
+# Email: joshuavanrooij@gmail.com
+
 from typing import Callable, cast
 from omegaconf import DictConfig
 
@@ -532,7 +540,7 @@ def calculate_dof(input_dim: int, model_cfg: AnyModelConfig) -> int:
         neurons in each hidden layer: k
         degree: d
 
-        Each function of degree d has (d + 1) coeffcients.
+        Each function of degree d has (d + 1) coefficients.
 
         Number of edges is pk + (n - 1)k^2 + kq
 

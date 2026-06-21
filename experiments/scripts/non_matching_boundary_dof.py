@@ -1,3 +1,10 @@
+'''
+Experiment setup for non-matching initial conditions experiments with loss vs model complexity.
+'''
+# Author: Joshua van Rooij
+# University: UvA
+# Email: joshuavanrooij@gmail.com
+
 from glob import glob
 from collections import defaultdict
 from omegaconf import DictConfig
@@ -78,8 +85,6 @@ class ProblemDefinition:
 
 
 class RunTraining:
-    """Run training of experiment 1. Saves artifacts to output_dir/ eagerly."""
-
     def __init__(self, problem: ProblemDefinition, cfg: DictConfig, output_dir: str):
         """
         Parameters
@@ -134,7 +139,9 @@ class RunTraining:
             models_list = []
             model_config = None
             for model in model_versions:
-                model_config = build_model_config(model_name, model, heads, constrained_heads)
+                model_config = build_model_config(
+                    model_name, model, heads, constrained_heads
+                )
                 models_list.append(model_config)
 
             assert model_config
@@ -587,15 +594,13 @@ def run(
 
     if generate_data:
         iterations = cfg.get("iterations", 1)
-        print(
-            f"[PHASE 1] Generating Data and Training Models ({iterations} iterations)..."
-        )
+        print(f"Generating Data and Training Models ({iterations} iterations)...")
         trainer = RunTraining(problem, cfg, output_dir)
         trainer.train_multiple(iterations)
-        print("[PHASE 1] Complete.\n")
+        print("Complete.\n")
 
     if make_plots:
-        print("[PHASE 2] Processing Data and Generating Plots...")
+        print("Processing Data and Generating Plots...")
         processor = DataProcessor(problem, output_dir)
         processor.plot_dof_vs_loss(
             ylabel="Error estimator $\\eta$",
@@ -613,6 +618,6 @@ def run(
             filename="l2_error_vs_dof_scenario_3.png",
             l2=True,
         )
-        print("[PHASE 2] Complete.\n")
+        print("Complete.\n")
 
     print("Experiment pipeline finished successfully.")

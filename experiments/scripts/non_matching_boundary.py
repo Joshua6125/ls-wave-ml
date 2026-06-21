@@ -1,3 +1,10 @@
+'''
+Experiment setup for non-matching initial condition experiments with loss vs training time.
+'''
+# Author: Joshua van Rooij
+# University: UvA
+# Email: joshuavanrooij@gmail.com
+
 from glob import glob
 from collections import defaultdict
 from omegaconf import DictConfig
@@ -9,7 +16,7 @@ from utils import (
     calculate_true_l2_error,
     calculate_true_v_error,
     make_second_order_model,
-    calculate_fosls_norm
+    calculate_fosls_norm,
 )
 from src.trainer import TrainState, TrainStepMetrics, run_training
 from src.models import AnyModelConfig, build_model
@@ -71,7 +78,7 @@ class ProblemDefinition:
         return jnp.where(
             in_T1,
             jnp.ones_like(t),
-            jnp.where(in_T3, -jnp.ones_like(t), jnp.zeros_like(t))
+            jnp.where(in_T3, -jnp.ones_like(t), jnp.zeros_like(t)),
         )
 
     def exact_u(self, t: jnp.ndarray, x: jnp.ndarray) -> jnp.ndarray:
@@ -82,8 +89,6 @@ class ProblemDefinition:
 
 
 class RunTraining:
-    """Run training of experiment 1. Saves artifacts to output_dir/ eagerly."""
-
     def __init__(self, problem: ProblemDefinition, cfg: DictConfig, output_dir: str):
         """
         Parameters
@@ -103,9 +108,7 @@ class RunTraining:
         self.f = lambda v: self.problem.source_f(jnp.array(v[0]), jnp.array(v[1]))
         self.g = lambda v: self.problem.source_g(jnp.array(v[0]), jnp.array(v[1]))
         self.v0 = lambda v: self.problem.initial_v(jnp.array(v[1]))
-        self.sigma0 = lambda v: jnp.array(
-            [self.problem.initial_sigma(jnp.array(v[1]))]
-        )
+        self.sigma0 = lambda v: jnp.array([self.problem.initial_sigma(jnp.array(v[1]))])
         self.u0 = lambda v: self.problem.initial_u(jnp.array(v[1]))
         self.ut0 = lambda v: self.problem.initial_v(jnp.array(v[1]))
         self.c = float(cfg.problem_params.get("c", 1.0))
@@ -136,13 +139,15 @@ class RunTraining:
                 constrained_heads = method.get("constrained_heads", "")
             else:
                 constrained_heads = []
-            model_config = build_model_config(model_name, model, heads, constrained_heads)
+            model_config = build_model_config(
+                model_name, model, heads, constrained_heads
+            )
             method_config = build_method_config(
                 method_name,
                 method,
                 model_config,
                 self.wave_functions,
-                self.cfg.get("integration")
+                self.cfg.get("integration"),
             )
 
             pairs.append((model_config, method_config))
@@ -169,8 +174,7 @@ class RunTraining:
 
         # Adjust seed based on iteration
         trainer_config = dataclasses.replace(
-            base_trainer_config,
-            seed=base_trainer_config.seed + iteration
+            base_trainer_config, seed=base_trainer_config.seed + iteration
         )
 
         pairs = self._read_combinations()
@@ -178,8 +182,14 @@ class RunTraining:
 
         print(f"--- Starting Training Phase (Iteration {iteration+1}) ---")
         print(f"Total configurations to train: {total_runs}")
-        init_lr = self.cfg.get("training", {}).get("learning_rate", {}).get("init_value", "Unknown")
-        print(f"Epochs: {trainer_config.epochs}, Initial LR: {init_lr}, Seed: {trainer_config.seed}\n")
+        init_lr = (
+            self.cfg.get("training", {})
+            .get("learning_rate", {})
+            .get("init_value", "Unknown")
+        )
+        print(
+            f"Epochs: {trainer_config.epochs}, Initial LR: {init_lr}, Seed: {trainer_config.seed}\n"
+        )
 
         eval_integrator_config = build_integration_config(self.cfg.callback_integration)
         eval_integrator = get_integrator(eval_integrator_config)
@@ -192,13 +202,15 @@ class RunTraining:
         os.makedirs(evals_dir, exist_ok=True)
 
         for i, (model, method) in enumerate(pairs, 1):
-            print(f"[{i}/{total_runs}] Training configuration: Model={model.kind}, Method={method.kind}")
+            print(
+                f"[{i}/{total_runs}] Training configuration: Model={model.kind}, Method={method.kind}"
+            )
 
             built_model = build_model(model)
             current_run_evals = {
                 "fosls_loss": [],
                 "true_v_error": [],
-                "true_l2_error": []
+                "true_l2_error": [],
             }
 
             def eval_callback(metrics: TrainStepMetrics, state: TrainState):
@@ -208,7 +220,7 @@ class RunTraining:
                     method_kind=method.kind,
                     v_sol=self.problem.exact_v,
                     sigma_sol=self.problem.exact_sigma,
-                    integrator=eval_integrator
+                    integrator=eval_integrator,
                 )
 
                 true_v_error = calculate_true_v_error(
@@ -217,7 +229,7 @@ class RunTraining:
                     method_kind=method.kind,
                     v_sol=self.problem.exact_v,
                     sigma_sol=self.problem.exact_sigma,
-                    integrator=eval_integrator
+                    integrator=eval_integrator,
                 )
 
                 if method.kind == "fosls":
@@ -231,7 +243,7 @@ class RunTraining:
                         g_fn=self.g,
                         v0_fn=self.v0,
                         sigma0_fn=self.sigma0,
-                        integrator=eval_integrator
+                        integrator=eval_integrator,
                     )
 
                 current_run_evals["fosls_loss"].append(total_loss)
@@ -245,16 +257,20 @@ class RunTraining:
                 model,
                 trainer_config,
                 sample_input,
-                callback=eval_callback
+                callback=eval_callback,
             )
             elapsed_time = time.time() - start_time
 
             name = f"{model.kind}-{method.kind}"
-            with open(os.path.join(models_dir, f"{name}_iter{iteration}.pkl"), "wb") as f:
+            with open(
+                os.path.join(models_dir, f"{name}_iter{iteration}.pkl"), "wb"
+            ) as f:
                 pickle.dump(final_state.params, f)
             with open(os.path.join(logs_dir, f"{name}_iter{iteration}.pkl"), "wb") as f:
                 pickle.dump(logged_metrics, f)
-            with open(os.path.join(evals_dir, f"{name}_iter{iteration}.pkl"), "wb") as f:
+            with open(
+                os.path.join(evals_dir, f"{name}_iter{iteration}.pkl"), "wb"
+            ) as f:
                 pickle.dump(current_run_evals, f)
 
             print(f"  -> Success! Time: {elapsed_time:.1f}s\n")
@@ -295,7 +311,14 @@ class DataProcessor:
         else:
             print(f"Warning: Evals directory not found at {self.evals_dir}")
 
-    def plot_vs_time(self, ylabel: str, title: str, filename: str, y_type: str, cutoff_time: float|None=None):
+    def plot_vs_time(
+        self,
+        ylabel: str,
+        title: str,
+        filename: str,
+        y_type: str,
+        cutoff_time: float | None = None,
+    ):
         import matplotlib.pyplot as plt
 
         if not self.evals_data:
@@ -318,7 +341,7 @@ class DataProcessor:
         plt.figure(figsize=(11, 7))
         for name in sorted(self.evals_data):
             evals = self.evals_data[name]
-            model, method = name.split('-')
+            model, method = name.split("-")
             if not [method, model] in combinations:
                 print(f"Not plotting {name}. Not in config.")
                 continue
@@ -327,7 +350,9 @@ class DataProcessor:
 
             metrics = self.metrics_data[name]
 
-            all_training_times = [[m.training_time for m in run_metrics] for run_metrics in metrics]
+            all_training_times = [
+                [m.training_time for m in run_metrics] for run_metrics in metrics
+            ]
 
             min_time = min(times[0] for times in all_training_times if len(times) > 0)
             max_time = max(times[-1] for times in all_training_times if len(times) > 0)
@@ -361,20 +386,28 @@ class DataProcessor:
             high_val = np.percentile(interpolated_matrix, error_high, axis=0)
 
             if show_error:
-                plt.fill_between(common_time_grid, low_val, high_val, color=line.get_color(), alpha=0.3)
+                plt.fill_between(
+                    common_time_grid,
+                    low_val,
+                    high_val,
+                    color=line.get_color(),
+                    alpha=0.3,
+                )
 
             all_csv.append(
-                pd.DataFrame({
-                    "plot-name": name,
-                    "time": common_time_grid,
-                    "median": median_val,
-                    "low": low_val,
-                    "high": high_val,
-                })
+                pd.DataFrame(
+                    {
+                        "plot-name": name,
+                        "time": common_time_grid,
+                        "median": median_val,
+                        "low": low_val,
+                        "high": high_val,
+                    }
+                )
             )
 
-        plt.tick_params(axis='both', which='major', labelsize=20)
-        plt.tick_params(axis='both', which='minor', labelsize=16)
+        plt.tick_params(axis="both", which="major", labelsize=20)
+        plt.tick_params(axis="both", which="minor", labelsize=16)
         plt.yscale("log")
         plt.xlabel("Training Time (seconds)", fontsize=22)
         plt.ylabel(ylabel, fontsize=22)
@@ -440,7 +473,9 @@ class DataProcessor:
                 constrained_heads = method_cfg.get("constrained_heads", "")
             else:
                 constrained_heads = []
-            model_obj_cfg = build_model_config(model_name, model_cfg, heads, constrained_heads)
+            model_obj_cfg = build_model_config(
+                model_name, model_cfg, heads, constrained_heads
+            )
             model_obj = build_model(model_obj_cfg)
             name = f"{model_name}-{method_name}"
 
@@ -449,7 +484,9 @@ class DataProcessor:
                 continue
 
             u0 = lambda v: self.problem.initial_u(jnp.array(v[1]))
-            second_order_apply = make_second_order_model(model_obj.apply, method_name, u0_fn=u0)
+            second_order_apply = make_second_order_model(
+                model_obj.apply, method_name, u0_fn=u0
+            )
             batched_apply = jax.jit(jax.vmap(second_order_apply, in_axes=(None, 0)))
 
             combo_predictions = []
@@ -472,7 +509,9 @@ class DataProcessor:
             if show_error:
                 low_error = np.percentile(predictions_matrix, error_low, axis=0)
                 high_error = np.percentile(predictions_matrix, error_high, axis=0)
-                plt.fill_between(x_vals, low_error, high_error, color=line.get_color(), alpha=0.3)
+                plt.fill_between(
+                    x_vals, low_error, high_error, color=line.get_color(), alpha=0.3
+                )
 
         if not plotted_any:
             print("No predictions found. Cannot plot specific times.")
@@ -503,8 +542,8 @@ class DataProcessor:
 def run(
     cfg: DictConfig,
     output_dir: str,
-    generate_data: bool=True,
-    make_plots: bool=True
+    generate_data: bool = True,
+    make_plots: bool = True,
 ):
     """
     Entry point for an experiment.
@@ -524,39 +563,35 @@ def run(
 
     if generate_data:
         iterations = cfg.get("iterations", 1)
-        print(f"[PHASE 1] Generating Data and Training Models ({iterations} iterations)...")
+        print(f"Generating Data and Training Models ({iterations} iterations)...")
         trainer = RunTraining(problem, cfg, output_dir)
         trainer.train_multiple(iterations)
-        print("[PHASE 1] Complete.\n")
+        print("Complete.\n")
 
     if make_plots:
-        print("[PHASE 2] Processing Data and Generating Plots...")
+        print("Processing Data and Generating Plots...")
         processor = DataProcessor(problem, output_dir)
         processor.plot_vs_time(
             ylabel="Error estimator $\\eta$",
             title="Error Estimator $\\eta$ vs Training Time",
             filename="error_estimator_vs_training_time_scenario_3.png",
             y_type="fosls_loss",
-            cutoff_time=200.0
+            cutoff_time=200.0,
         )
         processor.plot_vs_time(
             ylabel="$L^2$ error",
             title="$L^2$ Error vs Training Time",
             filename="l2_error_vs_training_time_scenario_3.png",
             y_type="true_l2_error",
-            cutoff_time=200.0
+            cutoff_time=200.0,
         )
         processor.plot_vs_time(
             ylabel="$V$-norm error",
             title="$V$-norm Error vs Training Time",
             filename="v_error_vs_training_time_scenario_3.png",
             y_type="true_v_error",
-            cutoff_time=200.0
+            cutoff_time=200.0,
         )
-        # processor.plot_specific_times(0.0)
-        # processor.plot_specific_times(0.333)
-        # processor.plot_specific_times(0.666)
-        # processor.plot_specific_times(1.0)
-        print("[PHASE 2] Complete.\n")
+        print("Complete.\n")
 
     print("Experiment pipeline finished successfully.")

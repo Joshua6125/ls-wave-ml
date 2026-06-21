@@ -2,23 +2,26 @@
 Main entry point for running experiments
 
 Full run:
-python main.py --config-name experiment1
+python main.py --config-name test_TR
 
 Only train models:
-python main.py --config-name experiment1 make_plots=False
+python main.py --config-name test_TR make_plots=False
 
 To generate plots of existing trained models and training data:
-python main.py --config-name experiment1 hydra.run.dir=outputs/xxxx-xx-xx/xx-xx-xx generate_data=False make_plots=True
+python main.py --config-name test_TR hydra.run.dir=outputs/xxxx-xx-xx/xx-xx-xx generate_data=False make_plots=True
 
 To reuse a saved run config as the base for a new run:
-python main.py --config-name experiment1 +previous_output_dir=outputs/xxxx-xx-xx/xx-xx-xx generate_data=False make_plots=True
+python main.py --config-name test_TR +previous_output_dir=outputs/xxxx-xx-xx/xx-xx-xx generate_data=False make_plots=True
 
 Run with modified existing parameters
-python main.py --config-name experiment1 training.learning_rate.init_value=1e-4
+python main.py --config-name test_TR training.learning_rate.init_value=1e-4
 
 Or add additional parameters
-python main.py --config-name experiment1 +additional_parameter=value
+python main.py --config-name test_TR +additional_parameter=value
 """
+# Author: Joshua van Rooij
+# University: UvA
+# Email: joshuavanrooij@gmail.com
 
 import sys
 from pathlib import Path
@@ -73,13 +76,11 @@ def main(cfg: DictConfig):
     if "script_name" not in cfg:
         raise ValueError("The configuration must specify 'script_name' (e.g. script_name: my_exp_script).")
 
-    # Dynamically import the experiment script from experiments/scripts/
     script_module = importlib.import_module(f"experiments.scripts.{cfg.script_name}")
 
     generate_data = cfg.get("generate_data", True)
     make_plots = cfg.get("make_plots", True)
 
-    # Call the main run function of the experiment
     if hasattr(script_module, "run"):
         script_module.run(cfg, output_dir, generate_data=generate_data, make_plots=make_plots)
     else:
