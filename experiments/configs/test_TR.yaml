@@ -37,8 +37,8 @@ integration:
   t_min: 0.0
   t_max: 1.0
   monte_carlo:
-    interior_samples: 200
-    boundary_samples: 20
+    interior_samples: 2000
+    boundary_samples: 200
 
 callback_integration:
   kind: "quadrature"
