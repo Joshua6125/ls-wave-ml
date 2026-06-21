@@ -132,7 +132,11 @@ class RunTraining:
             model = all_models.get(model_name, {})
 
             heads = method.get("output_heads", "")
-            model_config = build_model_config(model_name, model, heads)
+            if "V0" in model_name:
+                constrained_heads = method.get("constrained_heads", "")
+            else:
+                constrained_heads = []
+            model_config = build_model_config(model_name, model, heads, constrained_heads)
             method_config = build_method_config(
                 method_name,
                 method,
@@ -432,7 +436,11 @@ class DataProcessor:
                 continue
 
             heads = method_cfg.get("output_heads", "")
-            model_obj_cfg = build_model_config(model_name, model_cfg, heads)
+            if "V0" in model_name:
+                constrained_heads = method_cfg.get("constrained_heads", "")
+            else:
+                constrained_heads = []
+            model_obj_cfg = build_model_config(model_name, model_cfg, heads, constrained_heads)
             model_obj = build_model(model_obj_cfg)
             name = f"{model_name}-{method_name}"
 

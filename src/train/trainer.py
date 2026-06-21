@@ -245,6 +245,8 @@ class Trainer:
                     training_time=state.total_training_time,
                 )
 
+                print(f"Epoch {epoch}/{self.train_cfg.epochs}, Time {state.total_training_time:.2f}/{self.train_cfg.max_training_time}")
+
                 history.append(metrics)
 
                 if callback:

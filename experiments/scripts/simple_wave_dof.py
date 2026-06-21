@@ -141,13 +141,17 @@ class RunTraining:
         for method_name, model_name in combinations:
             method = all_methods[method_name]
             heads = method["output_heads"]
+            if "V0" in model_name:
+                constrained_heads = method.get("constrained_heads", "")
+            else:
+                constrained_heads = []
 
             # We want to save all configs
             model_versions = all_models.get(model_name, {})
             models_list = []
             model_config = None
             for model in model_versions:
-                model_config = build_model_config(model_name, model, heads)
+                model_config = build_model_config(model_name, model, heads, constrained_heads)
                 models_list.append(model_config)
 
             assert model_config
@@ -312,6 +316,7 @@ class DataProcessor:
 
         for name in sorted(self.model_params.keys()):
             model_kind, method_kind = name.split("-")
+            method = all_methods_cfg[method_kind]
 
             dof_points = []
             metric_central = []
@@ -323,9 +328,11 @@ class DataProcessor:
                 runs_params = self.model_params[name][dof]
                 run_metrics = []
 
-                heads = all_methods_cfg.get(method_kind, {}).get(
-                    "output_heads", {"u": 1}
-                )
+                heads = method["output_heads"]
+                if "V0" in model_kind:
+                    constrained_heads = method.get("constrained_heads", "")
+                else:
+                    constrained_heads = []
                 current_model_cfg = next(
                     (
                         test_cfg
@@ -334,7 +341,7 @@ class DataProcessor:
                             2,
                             (
                                 test_cfg := build_model_config(
-                                    model_kind, variant, heads
+                                    model_kind, variant, heads, constrained_heads
                                 )
                             ),
                         )
